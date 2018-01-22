@@ -1,4 +1,4 @@
-if [ -d "mpi_learn" ]; then
+if [ ! -d "mpi_learn" ]; then
     git clone git@github.com:duanders/mpi_learn.git
 fi
 cd mpi_learn
