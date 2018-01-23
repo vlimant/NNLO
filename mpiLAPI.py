@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import keras
 import glob
@@ -7,7 +9,10 @@ import time
 from densenet import DenseNet
 from keras.optimizers import Adam
 from argparse import ArgumentParser
-from subprocess import check_output
+from subprocess import check_output,call,getoutput
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Conv2D, MaxPooling2D
 import tensorflow as tf
 
 class mpi_learn_api:
@@ -80,9 +85,25 @@ class mpi_learn_api:
             else:
                 com+=' --%s %s'%(option.replace('_','-'), v)
         print(com)
-        return check_output(com, shell=True)
+        return getoutput(com)
 
-def get_model(nb_classes = 3, img_dim = (150, 94, 5), depth = 40, nb_dense_block = 3, growth_rate = 12, dropout_rate= 0.00, nb_filter = 16, lr = 1e-3):
+def test_cnn(dropout=0.5, kernel_size = 3, lr = 1e-3):
+    model = Sequential()
+
+    model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=(150,94,5)))
+    model.add(Conv2D(32, kernel_size=(kernel_size,kernel_size), strides=3, activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(dropout/2))
+
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(dropout))
+    model.add(Dense(3, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer = Adam(lr))
+    
+    return model.to_json()
+
+def test_densenet(nb_classes = 3, img_dim = (150, 94, 5), depth = 10, nb_dense_block = 3, growth_rate = 12, dropout_rate= 0.00, nb_filter = 16, lr = 1e-3):
     densenet = DenseNet(nb_classes = nb_classes, img_dim = img_dim, depth = depth, nb_dense_block = nb_dense_block, growth_rate = growth_rate, dropout_rate = dropout_rate, nb_filter = nb_filter)
     optimizer = Adam(lr = lr)
     densenet.compile(loss='categorical_crossentropy', optimizer = optimizer)
@@ -105,11 +126,16 @@ if __name__ == "__main__":
     from keras.models import model_from_json
     
     os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
-    
-    #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
-    #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
+    #import setGPU
 
-    model = get_model(depth = depth, growth_rate = args.growth, dropout_rate = args.dropout, nb_filter = args.filters, lr = args.lr)
+    
+    #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
+    #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
+    #sess.close()
+    
+
+    #model = test_densenet(depth = depth, growth_rate = args.growth, dropout_rate = args.dropout, nb_filter = args.filters, lr = args.lr)
+    model = test_cnn()
 
     mlapi = mpi_learn_api( model = model,
                            train_pattern = '/bigdata/shared/LCDJets_Remake/train/04*.h5',
@@ -117,16 +143,15 @@ if __name__ == "__main__":
                            check_file = True
                            )
    
-    output = mlapi.train(N=3,
+    output = mlapi.train(N=1,
                 trial_name = 'test',
                 features_name = 'Images',
                 labels_name = 'Labels',
                 batch = 4,
-                epoch = 2,
+                epoch = 10,
                 verbose = True,
                 loss = 'categorical_crossentropy',
                 easgd = False,
                 early_stopping = 5
                 )
-    print(output)
-    #sess.close()
+    #print(output)
