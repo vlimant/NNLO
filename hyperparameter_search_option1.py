@@ -81,7 +81,11 @@ def get_finished_process(proc_list):
         for run_id, params, proc in proc_list:
             if proc.poll() == 0:
                 print("process finished: " + str(run_id))
+                running_proc.remove((run_id, params, proc))
                 return (run_id, params, proc)
+            elif proc.poll() != 0:
+                print("process finished with errors: " + str(run_id))
+                running_proc.remove((run_id, params, proc))
         time.sleep(10)
 
 
@@ -109,14 +113,13 @@ if __name__ == '__main__':
             print("new run: " + str(run_id))
             suggested = bayesian_opt.ask()
             print(suggested)
-            p_i = train_model_async(model.build(suggested), n_epochs=1, n_nodes=1, trial_id=run_id)
+            p_i = train_model_async(model.build(suggested), n_epochs=1, n_nodes=1, trial_id=run_id, verbose=True)
             print((run_id, suggested, p_i))
             running_proc.append((run_id, suggested, p_i))
             run_id += 1
 
         # infinite loop until some configuration to finish
         run_completed, par_i, proc_id = get_finished_process(running_proc)
-        running_proc.remove((run_completed, par_i, proc_id))  # remove completed process
         fname = '_'.join([model_name, str(run_completed), "history.json"])
         y = get_fom_from_json_file(fname)
         result = bayesian_opt.tell(suggested, y)
