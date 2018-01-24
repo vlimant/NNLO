@@ -64,7 +64,37 @@ class mpi_learn_api:
                 a_list.remove(fn)
         return a_list
     
-    def train(self, get_output=True, **args):
+    def train(self, **args):
+        com = 'mpirun -n %d mpi_learn/MPIDriver.py %s %s %s'%(
+            args.get('N', 2),
+            self.json_file,
+            self.train_files,
+            self.val_files
+        )
+        for option,default in { 'trial_name' : 'mpi_run',
+                                 'master_gpu' : True,
+                                 'features_name' : 'X',
+                                 'labels_name' : 'Y',
+                                 'epoch' : 100,
+                                 'batch' : 100,
+                                 'loss' : 'categorical_crossentropy',
+                                 'verbose': False,
+                                 'early_stopping' : False,
+                                 'easgd' : False,
+                                 'tf': True,
+                                 'elastic_force': 0.9,
+                                 'elastic_momentum': 0.99,
+                                 'elastic_lr':0.001,
+                                 }.items():
+            v = args.get(option,default)
+            if type(v)==bool:
+                com +=' --%s'%option.replace('_','-') if v else ''
+            else:
+                com+=' --%s %s'%(option.replace('_','-'), v)
+        print(com)
+        return getoutput(com)
+
+    def train_async(self, get_output=True, **args):
         com = 'mpirun -n %d mpi_learn/MPIDriver.py %s %s %s'%(
             args.get('N', 2),
             self.json_file,
@@ -97,7 +127,7 @@ class mpi_learn_api:
             tfil = tempfile.TemporaryFile()
             return Popen(com, shell=True, stdout=tfil, stderr=tfil)
         else:
-            return getoutput(com)
+            return Popen(com, shell=True, stdout=tfil, stderr=tfil)
 
 def test_cnn(dropout=0.5, kernel_size = 3, lr = 1e-3):
     model = Sequential()
