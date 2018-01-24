@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import keras
 import glob
@@ -16,11 +17,13 @@ import tensorflow as tf
 
 class mpi_learn_api:
     def __init__(self, **args):
+        if not os.path.isdir('./tmp'): 
+            print("creating directory")
+            os.makedirs('./tmp')
         if not 'nohash' in args:
             args['check'] = time.mktime(time.gmtime())
             hash = hashlib.md5(str(args).encode('utf-8')).hexdigest()
-            if not os.path.isdir('tmp/'): os.makedirs('tmp/')
-            self.json_file = 'tmp/%s.json'% hash
+            self.json_file = './tmp/%s.json'% hash
             #print("self.jsonfile = {}".format(self.json_file))
             if os.path.isfile( self.json_file ) :
                 print("hash",hash,"cannot work")
@@ -128,7 +131,7 @@ class mpi_learn_api:
             tfil = tempfile.TemporaryFile()
             return Popen(com, shell=True, stdout=tfil, stderr=tfil)
         else:
-            return Popen(com, shell=True, stdout=tfil, stderr=tfil)
+            return Popen(com, shell=True)
 
 def test_cnn(dropout=0.5, kernel_size = 3, lr = 1e-3):
     model = Sequential()
