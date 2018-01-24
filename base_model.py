@@ -15,6 +15,8 @@ class BaseModel:
     def get_parameter_grid(self):
         assert NotImplementedError
 
+    def get_name(self):
+        assert NotImplementedError
 
 class CNNModel(BaseModel):
     def __init__(self):
@@ -44,11 +46,13 @@ class CNNModel(BaseModel):
             (.0, .5), # dropout
             (-5, 1),  # lr
         ]
-
+    
+    def get_name(self):
+        return "CNN"
 
 class DenseNetModel(BaseModel):
     def __init__(self):
-        assert NotImplementedError
+        return
     
     def build(self, params):
         depth = params[0]
@@ -72,3 +76,7 @@ class DenseNetModel(BaseModel):
             (16, 16),  # nb_filter
             (-5, 1),   # lr
         ]
+        
+    def get_name(self):
+        return "DenseNet"
+
