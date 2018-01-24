@@ -15,7 +15,7 @@ class BaseModel:
     def get_parameter_grid(self):
         assert NotImplementedError
 
-    def get_model():
+    def get_name():
         assert NotImplementedError
 
 class CNNModel(BaseModel):
@@ -47,7 +47,7 @@ class CNNModel(BaseModel):
             (-5, 1),  # lr
         ]
     
-    def get_model():
+    def get_name():
         return "CNN"
 
 class DenseNetModel(BaseModel):
@@ -77,6 +77,6 @@ class DenseNetModel(BaseModel):
             (-5, 1),   # lr
         ]
         
-    def get_model():
+    def get_name():
         return "DenseNet"
 
