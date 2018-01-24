@@ -28,28 +28,20 @@ class CNNModel(BaseModel):
         dropout = params[1]
         lr = 10.0 ** params[2]
 
-        inputs = Input(shape=(150,94,5))
-        x = Dense(64, activation='relu')(inputs)
-        x = Dense(64, activation='relu')(x)
+        inputs = Input(shape=self.input_shape)
+        x = Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu')(inputs)
+        x = Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu')(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Dropout(dropout / 2)(x)
+        x = Flatten(x)
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(dropout)(x)
         x = Dense(3, activation='softmax')(x)
 
         model = Model(inputs=inputs, outputs=x)
-        model.compile(optimizer='rmsprop',
+        model.compile(optimizer=Adam(lr=lr),
                     loss='categorical_crossentropy',
                     metrics=['accuracy'])
-        return model.to_json()
-
-        model = Sequential()
-        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=self.input_shape))
-        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(dropout / 2))
-
-        model.add(Flatten())
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(dropout))
-        model.add(Dense(3, activation='softmax'))
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr))
         return model.to_json()
 
     def get_parameter_grid(self):
@@ -60,7 +52,6 @@ class CNNModel(BaseModel):
         ]
     
     def get_name(self):
-        return "CNN_model"
        return "CNN_model"
 
 class DenseNetModel(BaseModel):
