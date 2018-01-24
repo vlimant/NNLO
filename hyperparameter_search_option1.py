@@ -54,9 +54,10 @@ def get_finished_process(proc_list):
 
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
     n_trials = 5 
     concurrent_train = 3
-    model = base_model.CNNModel()
+    model = base_model.FunctionalModel()
     param_grid = model.get_parameter_grid()
     bayesian_opt = Optimizer(param_grid)
 
