@@ -83,7 +83,8 @@ class DenseNetModel(BaseModel):
         return "DenseNet"
 
 class FunctionalModel(BaseModel):
-    def __init__(self):
+    def __init__(self, input_shape=(150,94,5)):
+        self.input_shape = input_shape
         return
 
     def build(self, params):
@@ -103,7 +104,7 @@ class FunctionalModel(BaseModel):
         return model.to_json()
 
         model = Sequential()
-        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=(150,94,5)))
+        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=self.input_shape))
         model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(dropout / 2))
