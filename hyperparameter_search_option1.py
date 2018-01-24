@@ -44,7 +44,6 @@ def get_train_cmd(mlapi, **args):
     return com
 
 def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, model_name='cnn_arch'):
-
     print("Starting MPI process asynchronously.")
     mlapi = mpiLAPI.mpi_learn_api( model = json_model,
                            train_pattern = '/bigdata/shared/LCDJets_Remake/train/04*.h5',
@@ -83,7 +82,6 @@ def get_finished_process(proc_list):
 if __name__ == '__main__':
     n_trials = 1 
     concurrent_train = 5
-    model_name = "cnn_arch"
     model = base_model.CNNModel()
     param_grid = model.get_parameter_grid()
     bayesian_opt = Optimizer(param_grid)
