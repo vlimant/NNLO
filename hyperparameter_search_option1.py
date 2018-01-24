@@ -54,8 +54,8 @@ def get_finished_process(proc_list):
 
 
 if __name__ == '__main__':
-    n_trials = 1
-    concurrent_train = 5
+    n_trials = 5 
+    concurrent_train = 3
     model = base_model.CNNModel()
     param_grid = model.get_parameter_grid()
     bayesian_opt = Optimizer(param_grid)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     running_proc = []
     run_id = 0
     while run_id < n_trials:
-        print("new run: " + str(run_id))
+        #print("new run: " + str(run_id))
         while len(running_proc) < concurrent_train:
             print("new run: " + str(run_id))
             suggested = bayesian_opt.ask()
