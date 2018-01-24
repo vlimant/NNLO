@@ -16,7 +16,7 @@ from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 
 import coordinator
-import proc_block
+import process_block
 import mpiLAPI as mpi
 
 def get_block_num(comm, block_size):
@@ -27,12 +27,16 @@ def get_block_num(comm, block_size):
     """
     rank = comm.Get_rank()
     if rank == 0:
-        return 999
-    block_num = int((rank-1) / block_size)
+        return 0
+    block_num = int((rank-1) / block_size) + 1
     return block_num
+
+def check_sanity(args):
+    assert args.block_size > 1, "Block size must be at least 2 (master + worker)"
 
 def make_parser():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', action='store_true')
 
     parser.add_argument('--batch', help='batch size', default=100, type=int)
     parser.add_argument('--epochs', help='number of training epochs', default=1, type=int)
@@ -43,23 +47,26 @@ def make_parser():
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
 
-    parser.add_argument('--block-size', type=int, default=1,
-            help='number of GPUs per block')
+    parser.add_argument('--block-size', type=int, default=2,
+            help='number of MPI processes per block')
     return parser
 
 
 if __name__ == '__main__':
     parser = make_parser()
     args = parser.parse_args()
+    check_sanity(args)
 
     train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
     val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
 
+    print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
     num_blocks = int(comm_world.Get_size()/args.block_size)
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
+    print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
 
     param_ranges = [
@@ -69,14 +76,14 @@ if __name__ == '__main__':
             ]
 
     # MPI process 0 coordinates the Bayesian optimization procedure
-    if block_num == -1:
-        model_fn = lambda x, y, z: mpiLAPI.test_cnn(x, y, np.exp(-z))
+    if block_num == 0:
+        model_fn = lambda x, y, z: mpi.test_cnn(x, y, np.exp(-z))
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
                 param_ranges, model_fn)
-        opt_coordinator.run(num_iterations=5)
+        opt_coordinator.run(num_iterations=30)
     else:
-        data = H5Data( batch_size=args.batch, 
-                features_name=args.features_name, labels_name=args.labels_name )
+        data = H5Data(batch_size=args.batch, 
+                features_name='Images', labels_name='Labels')
         data.set_file_names( train_list )
         validate_every = data.count_data()/args.batch 
         algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
@@ -88,6 +95,6 @@ if __name__ == '__main__':
         if args.early_stopping is not None:
             callbacks.append( cbks.EarlyStopping( patience=args.early_stopping,
                 verbose=1 ) )
-        block = proc_block.ProcBlock(comm_world, comm_block, algo, data,
-                args.epochs, train_list, val_list, callbacks)
+        block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
+                args.epochs, train_list, val_list, callbacks, verbose=args.verbose)
         block.run()
