@@ -19,20 +19,21 @@ class mpi_learn_api:
         if not 'nohash' in args:
             args['check'] = time.mktime(time.gmtime())
             hash = hashlib.md5(str(args).encode('utf-8')).hexdigest()
-            self.json_file = '/tmp/%s.json'% hash
+            if not os.path.isdir('tmp/'): os.makedirs('tmp/')
+            self.json_file = 'tmp/%s.json'% hash
             #print("self.jsonfile = {}".format(self.json_file))
             if os.path.isfile( self.json_file ) :
                 print("hash",hash,"cannot work")
                 sys.exit(1)
-            self.train_files = '/tmp/%s_train.list'%hash
-            self.val_files = '/tmp/%s_val.list'%hash
+            self.train_files = 'tmp/%s_train.list'%hash
+            self.val_files = 'tmp/%s_val.list'%hash
         else:
-            self.train_files = '/tmp/train.list'
-            self.val_files = '/tmp/val.list'
+            self.train_files = 'tmp/train.list'
+            self.val_files = 'tmp/val.list'
             if not 'model_name' in args: 
-                self.json_file = '/tmp/tmp.json'
+                self.json_file = 'tmp/tmp.json'
             else:
-                self.json_file = '/tmp/{}.json'.format(args['model_name'])
+                self.json_file = 'tmp/{}.json'.format(args['model_name'])
         open(self.json_file,'w').write(args['model'])
         if 'train_files' in args:
             open(self.train_files,'w').write( '\n'.join(args['train_files']))
