@@ -19,7 +19,8 @@ class BaseModel:
         assert NotImplementedError
 
 class CNNModel(BaseModel):
-    def __init__(self):
+    def __init__(self, input_shape=(150,94,5)):
+        self.input_shape = input_shape
         return
 
     def build(self, params):
@@ -28,7 +29,7 @@ class CNNModel(BaseModel):
         lr = 10.0 ** params[2]
 
         model = Sequential()
-        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=(150,94,5)))
+        model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=self.input_shape))
         model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(dropout / 2))
@@ -51,7 +52,8 @@ class CNNModel(BaseModel):
         return "CNN"
 
 class DenseNetModel(BaseModel):
-    def __init__(self):
+    def __init__(self, input_shape=(150,94,5)):
+        self.input_shape = input_shape
         return
     
     def build(self, params):
@@ -61,7 +63,7 @@ class DenseNetModel(BaseModel):
         dropout_rate = params[3]
         nb_filter = params[4]
         lr = 10. ** params[5]
-        densenet = DenseNet(nb_classes=3, img_dim=(150, 94, 5), depth=depth, nb_dense_block=nb_dense_block, 
+        densenet = DenseNet(nb_classes=3, img_dim=self.input_shape, depth=depth, nb_dense_block=nb_dense_block, 
                         growth_rate = growth_rate, dropout_rate = dropout_rate, nb_filter = nb_filter)
         optimizer = Adam(lr = lr)
         densenet.compile(loss='categorical_crossentropy', optimizer = optimizer)
@@ -79,4 +81,3 @@ class DenseNetModel(BaseModel):
         
     def get_name(self):
         return "DenseNet"
-
