@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import keras
 import glob
@@ -16,11 +17,13 @@ import tensorflow as tf
 
 class mpi_learn_api:
     def __init__(self, **args):
+        if not os.path.isdir('./tmp'): 
+            print("creating directory")
+            os.makedirs('./tmp')
         if not 'nohash' in args:
             args['check'] = time.mktime(time.gmtime())
             hash = hashlib.md5(str(args).encode('utf-8')).hexdigest()
-            if not os.path.isdir('tmp/'): os.makedirs('tmp/')
-            self.json_file = 'tmp/%s.json'% hash
+            self.json_file = './tmp/%s.json'% hash
             #print("self.jsonfile = {}".format(self.json_file))
             if os.path.isfile( self.json_file ) :
                 print("hash",hash,"cannot work")
@@ -65,7 +68,37 @@ class mpi_learn_api:
                 a_list.remove(fn)
         return a_list
     
-    def train(self, get_output=True, **args):
+    def train(self, **args):
+        com = 'mpirun -n %d mpi_learn/MPIDriver.py %s %s %s'%(
+            args.get('N', 2),
+            self.json_file,
+            self.train_files,
+            self.val_files
+        )
+        for option,default in { 'trial_name' : 'mpi_run',
+                                 'master_gpu' : True,
+                                 'features_name' : 'X',
+                                 'labels_name' : 'Y',
+                                 'epoch' : 100,
+                                 'batch' : 100,
+                                 'loss' : 'categorical_crossentropy',
+                                 'verbose': False,
+                                 'early_stopping' : False,
+                                 'easgd' : False,
+                                 'tf': True,
+                                 'elastic_force': 0.9,
+                                 'elastic_momentum': 0.99,
+                                 'elastic_lr':0.001,
+                                 }.items():
+            v = args.get(option,default)
+            if type(v)==bool:
+                com +=' --%s'%option.replace('_','-') if v else ''
+            else:
+                com+=' --%s %s'%(option.replace('_','-'), v)
+        print(com)
+        return getoutput(com)
+
+    def train_async(self, get_output=True, **args):
         com = 'mpirun -n %d mpi_learn/MPIDriver.py %s %s %s'%(
             args.get('N', 2),
             self.json_file,
@@ -98,7 +131,7 @@ class mpi_learn_api:
             tfil = tempfile.TemporaryFile()
             return Popen(com, shell=True, stdout=tfil, stderr=tfil)
         else:
-            return getoutput(com)
+            return Popen(com, shell=True)
 
 def test_cnn(dropout=0.5, kernel_size = 3, lr = 1e-3):
     model = Sequential()
@@ -138,11 +171,11 @@ if __name__ == "__main__":
     print("Model depth = {}".format(depth))
     from keras.models import model_from_json
     
-    os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
-    #import setGPU
+    # os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
+    # import setGPU
 
     
-    #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
+    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
     #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
     #sess.close()
     
