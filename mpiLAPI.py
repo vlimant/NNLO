@@ -125,11 +125,11 @@ if __name__ == "__main__":
     print("Model depth = {}".format(depth))
     from keras.models import model_from_json
     
-    os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
-    #import setGPU
+    # os.environ["CUDA_VISIBLE_DEVICES"]="0,3,4,5"
+    # import setGPU
 
     
-    #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
+    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
     #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
     #sess.close()
     

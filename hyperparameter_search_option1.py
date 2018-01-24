@@ -15,7 +15,7 @@ def get_fom_from_json_file(fname):
 
 
 def get_train_cmd(mlapi, **args):
-    com = 'mpirun -n %d mpi_learn/MPIDriver.py %s %s %s'%(
+    com = 'mpirun -n %d python3 mpi_learn/MPIDriver.py %s %s %s'%(
         args.get('N', 2),
         mlapi.json_file,
         mlapi.train_files,
@@ -44,7 +44,7 @@ def get_train_cmd(mlapi, **args):
     return com
 
 
-def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, verbose=False):
+def train_model_async(json_model, n_nodes, n_epochs, trial_id=0, verbose=False):
     mlapi = mpiLAPI.mpi_learn_api(model=json_model,
                            train_pattern = '/bigdata/shared/LCDJets_Remake/train/04*.h5',
                            val_pattern = '/bigdata/shared/LCDJets_Remake/val/020*.h5',
@@ -64,7 +64,7 @@ def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, verbose=Fal
 
     print("starting MPI process asynchronously.")
     print(train_cmd)
-    time.sleep(1)  # don't overload the cluster with mpi_run calls
+    time.sleep(5)  # don't overload the cluster with mpi_run calls
 
     if not verbose:
         import tempfile  # used only to suppress stdout and stderr output
@@ -83,15 +83,15 @@ def get_finished_process(proc_list):
                 print("process finished: " + str(run_id))
                 running_proc.remove((run_id, params, proc))
                 return (run_id, params, proc)
-            elif proc.poll() != 0:
+            elif proc.poll() != 0 and proc.poll() is not None:
                 print("process finished with errors: " + str(run_id))
                 running_proc.remove((run_id, params, proc))
         time.sleep(10)
 
 
 if __name__ == '__main__':
-    n_trials = 10
-    concurrent_train = 5
+    n_trials = 5
+    concurrent_train = 1
     model_name = "mnist_arch"
     # param_grid = [
     #     (3, 8),  # depth
@@ -113,7 +113,7 @@ if __name__ == '__main__':
             print("new run: " + str(run_id))
             suggested = bayesian_opt.ask()
             print(suggested)
-            p_i = train_model_async(model.build(suggested), n_epochs=1, n_nodes=1, trial_id=run_id, verbose=True)
+            p_i = train_model_async(model.build(suggested), n_epochs=3, n_nodes=2, trial_id=run_id, verbose=True)
             print((run_id, suggested, p_i))
             running_proc.append((run_id, suggested, p_i))
             run_id += 1
