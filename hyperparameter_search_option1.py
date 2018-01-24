@@ -15,37 +15,7 @@ def get_fom_from_json_file(fname):
         return float(fom)
 
 
-def get_train_cmd(mlapi, **args):
-    com = 'mpirun -n %d python3 mpi_learn/MPIDriver.py %s %s %s' % (
-        args.get('N', 2),
-        mlapi.json_file,
-        mlapi.train_files,
-        mlapi.val_files
-    )
-    for option, default in {'trial_name': 'mpi_run',
-                            'master_gpu': True,
-                            'features_name': 'X',
-                            'labels_name': 'Y',
-                            'epoch': 100,
-                            'batch': 100,
-                            'loss': 'categorical_crossentropy',
-                            'verbose': False,
-                            'early_stopping': False,
-                            'easgd': False,
-                            'tf': True,
-                            'elastic_force': 0.9,
-                            'elastic_momentum': 0.99,
-                            'elastic_lr': 0.001,
-                            }.items():
-        v = args.get(option, default)
-        if type(v) == bool:
-            com += ' --%s' % option.replace('_', '-') if v else ''
-        else:
-            com += ' --%s %s' % (option.replace('_', '-'), v)
-    return com
-
-
-def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, model_name='cnn_arch'):
+def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, get_output=True, model_name='cnn_arch'):
     print("Starting MPI process asynchronously.")
     mlapi = mpiLAPI.mpi_learn_api(model=json_model,
                                   train_pattern='/bigdata/shared/LCDJets_Remake/train/04*.h5',
@@ -54,27 +24,18 @@ def train_model_async(json_model, n_nodes=3, n_epochs=3, trial_id=0, model_name=
                                   nohash=True,
                                   model_name=model_name
                                   )
-    train_cmd = get_train_cmd(mlapi, N=n_nodes,
-                              trial_name=str(trial_id),
-                              features_name='Images',
-                              labels_name='Labels',
-                              batch=4,
-                              epoch=n_epochs,
-                              verbose=True,
-                              loss='categorical_crossentropy',
-                              easgd=False,
-                              early_stopping=5
-                              )
-
-    print(train_cmd)
+    p = mlapi.train_async(get_output=get_output, N=n_nodes,
+                trial_name = str(trial_id),
+                features_name = 'Images',
+                labels_name = 'Labels',
+                batch = 4,
+                epoch = n_epochs,
+                verbose = True,
+                loss = 'categorical_crossentropy',
+                easgd = False,
+                early_stopping = 5
+    )
     time.sleep(5)  # don't overload the cluster with mpi_run calls
-
-    if not verbose:
-        import tempfile  # used only to suppress stdout and stderr output
-        tfil = tempfile.TemporaryFile()
-        p = subprocess.Popen(train_cmd, shell=True, stdout=tfil, stderr=tfil)
-    else:
-        p = subprocess.Popen(train_cmd, shell=True)
     return p
 
 
@@ -108,7 +69,7 @@ if __name__ == '__main__':
             suggested = bayesian_opt.ask()
             print(suggested)
             p_i = train_model_async(model.build(suggested), n_epochs=3, n_nodes=2, trial_id=run_id,
-                                    model_name=model.get_name(), verbose=True)
+                                    get_output=True, model_name=model.get_name())
             print((run_id, suggested, p_i))
             running_proc.append((run_id, suggested, p_i))
             run_id += 1
