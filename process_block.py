@@ -62,6 +62,7 @@ class ProcessBlock(object):
         #    histories = manager.process.train()
         #return histories['0']['val_loss'][-1]
         if self.comm_block.Get_rank() == 0:
+            time.sleep(abs(np.random.randn()))
             result = np.random.randn()
             print("Process {} finished training with result {}".format(self.comm_world.Get_rank(), result))
             return result
