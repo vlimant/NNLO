@@ -55,7 +55,7 @@ class ProcessBlock(object):
         fake_train = False
         if fake_train:
             if self.comm_block.Get_rank() == 0:
-                    time.sleep(abs(np.random.randn()))
+                    time.sleep(abs(np.random.randn()*30))
                     result = np.random.randn()
                     print("Process {} finished training with result {}".format(self.comm_world.Get_rank(), result))
                     return result
@@ -69,7 +69,7 @@ class ProcessBlock(object):
             if self.comm_block.Get_rank() == 0:
                 print("Process {} launching training".format(self.comm_world.Get_rank()))
                 histories = manager.train()
-                fom = manager.process.model.figure_of_merit()
+                fom = manager.figure_of_merit()
                 return fom
 
     def send_result(self, result):
