@@ -36,11 +36,38 @@ class Coordinator(object):
         self.req_dict = {}
         self.best_params = None
 
+        self.next_params = []
+        self.to_tell = []
+
+    def ask(self, n_iter):
+        if not self.next_params:
+            ## don't ask every single time
+            self.next_params = self.optimizer.ask( n_iter )
+        return self.next_params.pop(-1)
+
+    def fit(self):
+        X = [o[0] for o in self.to_tell]
+        Y = [o[1] for o in self.to_tell]
+
+        if X and Y:
+            opt_result = self.optimizer.tell( X, Y )
+            self.best_params = opt_result.x
+            print("New best param estimate: {}".format(self.best_params))
+            self.next_params = []
+            self.to_tell = []
+
+    def tell(self, params, result):
+        self.to_tell.append( (params, result))
+        tell_right_away = False
+        if tell_right_away:
+            self.fit()
+        
     def run(self, num_iterations=1):
         for step in range(num_iterations):
             print("Coordinator iteration {}".format(step))
             next_block = self.wait_for_idle_block()
-            next_params = self.optimizer.ask()
+            #next_params = self.optimizer.ask()
+            next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params) 
         for proc in range(1, self.comm.Get_size()):
@@ -56,6 +83,7 @@ class Coordinator(object):
         """
         cur_block = 1
         while True:
+            self.fit()
             idle = self.check_block(cur_block)
             if idle:
                 return cur_block
@@ -77,9 +105,10 @@ class Coordinator(object):
                 self.param_list.append(params)
                 self.fom_list.append(result)
                 print("Telling {}".format(result))
-                opt_result = self.optimizer.tell(params, result)
-                self.best_params = opt_result.x
-                print("New best param estimate: {}".format(self.best_params))
+                self.tell( params, result )
+                #opt_result = self.optimizer.tell(params, result)
+                #self.best_params = opt_result.x
+                #print("New best param estimate: {}".format(self.best_params))
                 del self.req_dict[block_num]
                 return True
             return False
