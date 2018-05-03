@@ -96,8 +96,8 @@ class Coordinator(object):
         If the indicated block has completed a training run, store the results.
         Returns True if the block is ready to train a new model, False otherwise.
         """
-        block_size = int((self.comm.Get_size()-1)/self.num_blocks)
-        proc = (block_num-1) * block_size + 1 
+        #block_size = int((self.comm.Get_size()-1)/self.num_blocks)
+        #proc = (block_num-1) * block_size + 1 
         if block_num in self.block_dict:
             done, result = self.req_dict[block_num].test()
             if done:
