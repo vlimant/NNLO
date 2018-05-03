@@ -21,15 +21,16 @@ class Coordinator(object):
     best_params: best parameter set found by Bayesian optimization
     """
 
-    def __init__(self, comm, num_blocks, opt_params,
-            model_fn):
+    def __init__(self, comm, num_blocks,
+                 model_provider):
         print("Coordinator initializing")
         self.comm = comm
         self.num_blocks = num_blocks
-        self.opt_params = opt_params
-        self.model_fn = model_fn
-       
-        self.optimizer = skopt.Optimizer(opt_params)
+
+        self.model_provider = model_provider
+        self.opt_params = self.model_provider.parameters
+
+        self.optimizer = skopt.Optimizer(dimensions=self.opt_params)
         self.param_list = []
         self.fom_list = []
         self.block_dict = {}
@@ -66,13 +67,12 @@ class Coordinator(object):
         for step in range(num_iterations):
             print("Coordinator iteration {}".format(step))
             next_block = self.wait_for_idle_block()
-            #next_params = self.optimizer.ask()
             next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params) 
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
-            self.comm.send('exit', dest=proc, tag=tag_lookup('json')) 
+            self.comm.send(None, dest=proc, tag=tag_lookup('mbuilder')) 
         print("Finished all iterations!")
         print("Best parameters found: {}".format(self.best_params))
         
@@ -96,8 +96,6 @@ class Coordinator(object):
         If the indicated block has completed a training run, store the results.
         Returns True if the block is ready to train a new model, False otherwise.
         """
-        #block_size = int((self.comm.Get_size()-1)/self.num_blocks)
-        #proc = (block_num-1) * block_size + 1 
         if block_num in self.block_dict:
             done, result = self.req_dict[block_num].test()
             if done:
@@ -106,9 +104,6 @@ class Coordinator(object):
                 self.fom_list.append(result)
                 print("Telling {}".format(result))
                 self.tell( params, result )
-                #opt_result = self.optimizer.tell(params, result)
-                #self.best_params = opt_result.x
-                #print("New best param estimate: {}".format(self.best_params))
                 del self.req_dict[block_num]
                 return True
             return False
@@ -117,7 +112,7 @@ class Coordinator(object):
 
     def run_block(self, block_num, params):
         self.block_dict[block_num] = params
-        model_json = self.model_fn(*params)
+        model_builder = self.model_provider.builder(*params)
         # In the current setup, we need to signal each GPU in the 
         # block to start training
         block_size = int((self.comm.Get_size()-1)/self.num_blocks)
@@ -125,5 +120,5 @@ class Coordinator(object):
         end = block_num * block_size + 1 
         print("Launching block {}".format(block_num))
         for proc in range(start, end):
-            self.comm.send(model_json, dest=proc, tag=tag_lookup('json')) 
+            self.comm.send(model_builder, dest=proc, tag=tag_lookup('mbuilder')) 
         self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))

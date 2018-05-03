@@ -14,6 +14,19 @@ from mpi_learn.train.data import H5Data
 from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
+import mpi_learn.train.model as model
+from skopt.space import Real, Integer
+
+class BuilderFromFunction(object):
+    def __init__(self, model_fn, parameters):
+        self.model_fn = model_fn
+        self.parameters = parameters
+
+    def builder(self,*params):
+        args = dict(zip([p.name for p in self.parameters],params))
+        model_json = self.model_fn( **args )
+        return model.ModelFromJsonTF(None,
+                                     json_str=model_json)
 
 import coordinator
 import process_block
@@ -57,8 +70,34 @@ if __name__ == '__main__':
     args = parser.parse_args()
     check_sanity(args)
 
-    train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
-    val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
+
+    test = 'mnist'
+    if test == 'topclass':
+        ### topclass example
+        model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
+                                              parameters = [ Real(0.0, 1.0, name='dropout'),
+                                                             Integer(1,6, name='kernel_size'),
+                                                             Real(1.,10., name = 'llr')
+                                                         ]
+                                          )
+        #train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
+        #val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
+        train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/04*.h5')
+        val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/020*.h5')
+
+    elif test == 'mnist':
+        ### mnist example
+        model_provider = BuilderFromFunction( model_fn = mpi.test_mnist,
+                                              parameters = [ Integer(10,50, name='nb_filters'),
+                                                             Integer(2,10, name='pool_size'),
+                                                             Integer(2,10, name='kernel_size'),
+                                                             Integer(50,200, name='dense'),
+                                                             Real(0.0, 1.0, name='dropout')
+                                                         ]
+                                          )
+        all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
+        train_list = all_list[:-10]
+        val_list = all_list[-10:]
 
     print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
@@ -69,17 +108,10 @@ if __name__ == '__main__':
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
 
-    param_ranges = [
-            (0.0, 1.0), # dropout
-            (1, 6), # kernel_size
-            (1., 10.), # lr exponent
-            ]
-
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
-        model_fn = lambda x, y, z: mpi.test_cnn(x, y, np.exp(-z))
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
-                param_ranges, model_fn)
+                                                  model_provider)
         opt_coordinator.run(num_iterations=30)
     else:
         data = H5Data(batch_size=args.batch, 
