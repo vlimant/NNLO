@@ -49,23 +49,31 @@ class ProcessBlock(object):
         return model_str
 
     def train_model(self, model_json):
-        print("Process {} creating ModelFromJsonTF object".format(self.comm_world.Get_rank()))
-        model_builder = model.ModelFromJsonTF(self.comm_block, 
-            json_str=model_json, device_name=self.device)
-        # commenting this out until MPI training is working correctly
-        #print("Process {} creating MPIManager".format(self.comm_world.Get_rank()))
-        #manager = mm.MPIManager(self.comm_block, self.data, self.algo, model_builder,
-        #        self.epochs, self.train_list, self.val_list, callbacks=self.callbacks,
-        #        verbose=self.verbose)
-        #if self.comm_block.Get_rank() == 0:
-        #    print("Process {} launching training".format(self.comm_world.Get_rank()))
-        #    histories = manager.process.train()
-        #return histories['0']['val_loss'][-1]
-        if self.comm_block.Get_rank() == 0:
-            time.sleep(abs(np.random.randn()))
-            result = np.random.randn()
-            print("Process {} finished training with result {}".format(self.comm_world.Get_rank(), result))
-            return result
+        fake_train = True
+        if fake_train:
+            if self.comm_block.Get_rank() == 0:
+                    time.sleep(abs(np.random.randn()))
+                    result = np.random.randn()
+                    print("Process {} finished training with result {}".format(self.comm_world.Get_rank(), result))
+                    return result
+        else:
+            print("Process {} creating ModelFromJsonTF object".format(self.comm_world.Get_rank()))
+            model_builder = model.ModelFromJsonTF(self.comm_block, 
+                                                  json_str=model_json, device_name=self.device)
+            # commenting this out until MPI training is working correctly
+            print("Process {} creating MPIManager".format(self.comm_world.Get_rank()))
+            manager = mm.MPImanager = mm.MPIManager(
+            #manager = mm.MPIKFoldManager( 5,
+                                          self.comm_block, self.data, self.algo, model_builder,
+                                          self.epochs, self.train_list, self.val_list, callbacks=self.callbacks,
+                                          verbose=self.verbose)
+            if self.comm_block.Get_rank() == 0:
+                print("Process {} launching training".format(self.comm_world.Get_rank()))
+                #histories = manager.process.train()
+                histories = manager.train()
+                fom = manager.process.model.figure_of_merit()
+                return fom
+                #return histories['0']['val_loss'][-1]
 
     def send_result(self, result):
         if self.comm_block.Get_rank() == 0:
