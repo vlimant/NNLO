@@ -41,7 +41,9 @@ def get_block_num(comm, block_size):
     rank = comm.Get_rank()
     if rank == 0:
         return 0
-    block_num = int((rank-1) / block_size) + 1
+    block_num, rank_in_block = divmod( rank-1, block_size)
+    #block_num = int((rank-1) / block_size) + 1
+    block_num+=1 ## as blocknum 0 is the skopt-master
     return block_num
 
 def check_sanity(args):
@@ -102,12 +104,27 @@ if __name__ == '__main__':
 
     print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
-    num_blocks = int(comm_world.Get_size()/args.block_size)
+    ## consistency check to make sure everything is appropriate
+    num_blocks, left_over = divmod( (comm_world.Get_size()-1), args.block_size)
+    if left_over:
+        print ("The last block is going to be made of {} nodes, make inconsistent block size {}".format( left_over,
+                                                                                                         args.block_size))
+        num_blocks += 1 ## to accoun for the last block
+        if left_over<2:
+            print ("The last block is going to be too small for mpi_learn, with no workers")
+        sys.exit(1)
+
+
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
+    print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
+                                                                                              num_blocks,
+                                                                                              block_num,
+                                                                                              comm_block.Get_rank()
+                                                                                            ))
 
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
