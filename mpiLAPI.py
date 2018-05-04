@@ -15,6 +15,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 import tensorflow as tf
 import numpy as np
+import keras.backend as K
 
 class mpi_learn_api:
     def __init__(self, **args):
@@ -146,7 +147,7 @@ def test_mnist(**args):
     pool_size = (ps,ps)
     # convolution kernel size
     ks = args.get('kernel_size',3)
-    kernel_size = args.get(ks, ks)
+    kernel_size = (ks, ks)
     do = args.get('drop_out', 0.25)
     dense = args.get('dense', 128)
     if K.image_dim_ordering() == 'th':
@@ -154,11 +155,13 @@ def test_mnist(**args):
     else:
         input_shape = (img_rows, img_cols, 1)
     model = Sequential()
-    model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
-                            border_mode='valid',
-                            input_shape=input_shape))
+    #model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
+    model.add(Conv2D(nb_filters, kernel_size = kernel_size,
+                     border_mode='valid',
+                     input_shape=input_shape))
     model.add(Activation('relu'))
-    model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1]))
+    #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1]))
+    model.add(Conv2D(nb_filters, kernel_size = kernel_size))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=pool_size))
     model.add(Dropout(do))
@@ -168,7 +171,7 @@ def test_mnist(**args):
     model.add(Dropout(do))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
-    return model
+    return model.to_json()
 
 def test_cnn(**args):
     dropout= args.get('dropout',0.5)
