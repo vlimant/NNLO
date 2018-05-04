@@ -96,8 +96,9 @@ if __name__ == '__main__':
                                                          ]
                                           )
         all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
-        train_list = all_list[:-10]
-        val_list = all_list[-10:]
+        l = int( len(all_list)*0.70)
+        train_list = all_list[:l]
+        val_list = all_list[l:]
 
     print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
