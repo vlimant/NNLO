@@ -52,7 +52,8 @@ class ProcessBlock(object):
             if model_builder:
                 model_builder.comm = self.comm_block
                 model_builder.device = model_builder.get_device_name(self.device)
-        return model_builder
+            return model_builder
+        return None
 
     def train_model(self, model_builder):
         fake_train = False
