@@ -1,4 +1,5 @@
 import skopt 
+import random
 
 from tag_lookup import tag_lookup
 
@@ -79,15 +80,15 @@ class Coordinator(object):
         In a loop, checks each block of processes to see if it's
         idle.  This function blocks until there is an available process.
         """
-        cur_block = 1
+        blocklist = list(range(1, self.num_blocks))
+        
         while True:
             self.fit()
-            idle = self.check_block(cur_block)
-            if idle:
-                return cur_block
-            cur_block += 1
-            if cur_block > self.num_blocks:
-                cur_block = 1
+            random.shuffle( blocklist ) ## look at them in random order
+            for cur_block in blocklist:
+                idle = self.check_block(cur_block)
+                if idle:
+                    return cur_block
 
     def check_block(self, block_num):
         """
