@@ -5,7 +5,8 @@ def tag_lookup(tag):
     tags = {
             'json':1,
             'result':2,
-            'mbuilder':3
+            'mbuilder':3,
+            'params':4
             }
     return tags.get(tag, 0)
 

@@ -25,14 +25,15 @@ class ProcessBlock(object):
     verbose: print detailed output from underlying mpi_learn machinery
     """
 
-    def __init__(self, comm_world, comm_block, algo, data, device,
-            epochs, train_list, val_list, callbacks=None, verbose=False):
+    def __init__(self, comm_world, comm_block, algo, data, device, model_provider,
+                 epochs, train_list, val_list, callbacks=None, verbose=False):
         print("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
         self.algo = algo
         self.data = data
         self.device = device
+        self.model_provider = model_provider
         self.epochs = epochs
         self.train_list = train_list
         self.val_list = val_list
@@ -44,11 +45,13 @@ class ProcessBlock(object):
         Blocks until the parent sends a JSON string
         indicating the model that should be trained.
         """
-        print("ProcessBlock (rank {}) waiting for model builder object".format(self.comm_world.Get_rank()))
-        model_builder = self.comm_world.recv(source=0, tag=tag_lookup('mbuilder'))
-        if model_builder:
-            model_builder.comm = self.comm_block
-            model_builder.device = self.device
+        print("ProcessBlock (rank {}) waiting for model params".format(self.comm_world.Get_rank()))
+        params = self.comm_world.recv(source=0, tag=tag_lookup('params'))
+        if params is not None:
+            model_builder = self.model_provider.builder(*params)
+            if model_builder:
+                model_builder.comm = self.comm_block
+                model_builder.device = model_builder.get_device_name(self.device)
         return model_builder
 
     def train_model(self, model_builder):

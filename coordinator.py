@@ -22,14 +22,12 @@ class Coordinator(object):
     """
 
     def __init__(self, comm, num_blocks,
-                 model_provider):
+                 opt_params):
         print("Coordinator initializing")
         self.comm = comm
         self.num_blocks = num_blocks
 
-        self.model_provider = model_provider
-        self.opt_params = self.model_provider.parameters
-
+        self.opt_params = opt_params
         self.optimizer = skopt.Optimizer(dimensions=self.opt_params)
         self.param_list = []
         self.fom_list = []
@@ -72,7 +70,7 @@ class Coordinator(object):
             self.run_block(next_block, next_params) 
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
-            self.comm.send(None, dest=proc, tag=tag_lookup('mbuilder')) 
+            self.comm.send(None, dest=proc, tag=tag_lookup('params')) 
         print("Finished all iterations!")
         print("Best parameters found: {}".format(self.best_params))
         
@@ -112,7 +110,6 @@ class Coordinator(object):
 
     def run_block(self, block_num, params):
         self.block_dict[block_num] = params
-        model_builder = self.model_provider.builder(*params)
         # In the current setup, we need to signal each GPU in the 
         # block to start training
         block_size = int((self.comm.Get_size()-1)/self.num_blocks)
@@ -120,5 +117,5 @@ class Coordinator(object):
         end = block_num * block_size + 1 
         print("Launching block {}".format(block_num))
         for proc in range(start, end):
-            self.comm.send(model_builder, dest=proc, tag=tag_lookup('mbuilder')) 
+            self.comm.send(params, dest=proc, tag=tag_lookup('params')) 
         self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))

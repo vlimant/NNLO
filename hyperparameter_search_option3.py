@@ -14,7 +14,7 @@ from mpi_learn.train.data import H5Data
 from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
-import mpi_learn.train.model as model
+from mpi_learn.train.model import ModelFromJsonTF
 from skopt.space import Real, Integer
 
 class BuilderFromFunction(object):
@@ -25,8 +25,8 @@ class BuilderFromFunction(object):
     def builder(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
         model_json = self.model_fn( **args )
-        return model.ModelFromJsonTF(None,
-                                     json_str=model_json)
+        return ModelFromJsonTF(None,
+                               json_str=model_json)
 
 import coordinator
 import process_block
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
-                                                  model_provider)
+                                                  model_provider.parameters)
         opt_coordinator.run(num_iterations=30)
     else:
         data = H5Data(batch_size=args.batch, 
@@ -128,5 +128,6 @@ if __name__ == '__main__':
             callbacks.append( cbks.EarlyStopping( patience=args.early_stopping,
                 verbose=1 ) )
         block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
-                args.epochs, train_list, val_list, callbacks, verbose=args.verbose)
+                                           model_provider,
+                                           args.epochs, train_list, val_list, callbacks, verbose=args.verbose)
         block.run()
