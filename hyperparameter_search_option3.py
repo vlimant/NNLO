@@ -6,6 +6,7 @@ import argparse
 import json
 import time
 import glob
+import socket
 from mpi4py import MPI
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
@@ -54,7 +55,7 @@ def make_parser():
     parser.add_argument('--verbose', action='store_true')
 
     parser.add_argument('--batch', help='batch size', default=100, type=int)
-    parser.add_argument('--epochs', help='number of training epochs', default=1, type=int)
+    parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
     parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
     parser.add_argument('--loss',help='loss function',default='binary_crossentropy')
     parser.add_argument('--early-stopping', type=int, 
@@ -68,11 +69,14 @@ def make_parser():
 
 
 if __name__ == '__main__':
+
+    print ("I am on",socket.gethostname())
     parser = make_parser()
     args = parser.parse_args()
     check_sanity(args)
 
 
+    #test = 'topclass'
     test = 'mnist'
     if test == 'topclass':
         ### topclass example
@@ -84,9 +88,10 @@ if __name__ == '__main__':
                                           )
         #train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
         #val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
-        train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/04*.h5')
-        val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/020*.h5')
-
+        train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
+        val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
+        features_name='Images'
+        labels_name='Labels'
     elif test == 'mnist':
         ### mnist example
         model_provider = BuilderFromFunction( model_fn = mpi.test_mnist,
@@ -101,7 +106,10 @@ if __name__ == '__main__':
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
+        features_name='features'
+        labels_name='labels'
 
+    print (len(train_list),"train files",len(val_list),"validation files")
     print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
     ## consistency check to make sure everything is appropriate
@@ -125,17 +133,25 @@ if __name__ == '__main__':
                                                                                               block_num,
                                                                                               comm_block.Get_rank()
                                                                                             ))
-
+    ## you need to sync every one up here
+    all_block_nums = comm_world.allgather( block_num )
+    print ("we gathered all these blocks {}".format( all_block_nums ))
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters)
         opt_coordinator.run(num_iterations=30)
     else:
+        print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
+                                                                                 block_num,
+                                                                                 comm_block.Get_rank()))
         data = H5Data(batch_size=args.batch, 
-                features_name='Images', labels_name='Labels')
+                      features_name=features_name,
+                      labels_name=labels_name
+        )
         data.set_file_names( train_list )
         validate_every = data.count_data()/args.batch 
+        print (data.count_data(),"samples to train on")
         algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
                 sync_every=args.sync_every) 
         os.environ['KERAS_BACKEND'] = backend
