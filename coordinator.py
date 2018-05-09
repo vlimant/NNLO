@@ -52,12 +52,12 @@ class Coordinator(object):
         if X and Y:
             opt_result = self.optimizer.tell( X, Y )
             self.best_params = opt_result.x
-            print("New best param estimate: {}".format(self.best_params))
+            print("New best param estimate, with telling {} points : {}".format(len(X),self.best_params))
             self.next_params = []
             self.to_tell = []
 
     def tell(self, params, result):
-        self.to_tell.append( (params, result))
+        self.to_tell.append( (params, result) )
         tell_right_away = False
         if tell_right_away:
             self.fit()
