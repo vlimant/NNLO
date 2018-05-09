@@ -16,6 +16,7 @@ from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 from mpi_learn.train.model import ModelFromJsonTF
+from mpi_learn.train.GanModel import GANBuilder
 from skopt.space import Real, Integer
 
 class BuilderFromFunction(object):
@@ -78,6 +79,7 @@ if __name__ == '__main__':
 
     #test = 'topclass'
     test = 'mnist'
+    #test = 'gan'
     if test == 'topclass':
         ### topclass example
         model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
@@ -101,7 +103,7 @@ if __name__ == '__main__':
                                                              Integer(50,200, name='dense'),
                                                              Real(0.0, 1.0, name='dropout')
                                                          ]
-                                          )
+        )
         all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
@@ -109,6 +111,20 @@ if __name__ == '__main__':
         features_name='features'
         labels_name='labels'
 
+    elif test == 'gan':
+        ### the gan example
+        model_provider = GANBuilder( parameters = [ Integer(50,400, name='latent_size' ),
+                                                    Real(0.0, 1.0, name='discr_drop_out')
+                                                ]
+        )
+
+        all_list = glob.glob('/scratch/snx3000/vlimant/3DGAN/*.h5')
+        l = int( len(all_list)*0.70)
+        train_list = all_list[:l]
+        val_list = all_list[l:]
+        features_name='features'
+        labels_name='labels'
+        
     print (len(train_list),"train files",len(val_list),"validation files")
     print("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
