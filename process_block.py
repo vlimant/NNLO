@@ -40,14 +40,18 @@ class ProcessBlock(object):
         self.callbacks = callbacks
         self.verbose = verbose
 
+    def ranks(self):
+        return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
+
     def wait_for_model(self):
         """
-        Blocks until the parent sends a JSON string
+        Blocks until the parent sends a parameter set
         indicating the model that should be trained.
         """
-        print("ProcessBlock (rank {}) waiting for model params".format(self.comm_world.Get_rank()))
+        print("{} waiting for model params".format(self.ranks()))
         params = self.comm_world.recv(source=0, tag=tag_lookup('params'))
         if params is not None:
+            print ("{} received parameters {}".format( self.ranks(), params))
             model_builder = self.model_provider.builder(*params)
             if model_builder:
                 model_builder.comm = self.comm_block
@@ -61,24 +65,30 @@ class ProcessBlock(object):
             if self.comm_block.Get_rank() == 0:
                     time.sleep(abs(np.random.randn()*30))
                     result = np.random.randn()
-                    print("Process {} finished training with result {}".format(self.comm_world.Get_rank(), result))
+                    print("{} finished training with result {}".format(self.ranks(), result))
                     return result
         else:
-            print("Process {} creating MPIManager".format(self.comm_world.Get_rank()))
+            print("{} creating MPIManager".format(self.ranks()))
             manager = mm.MPIManager(
             #manager = mm.MPIKFoldManager( 5,
                                           self.comm_block, self.data, self.algo, model_builder,
                                           self.epochs, self.train_list, self.val_list, callbacks=self.callbacks,
                                           verbose=self.verbose)
+            fom = None
             if self.comm_block.Get_rank() == 0:
-                print("Process {} launching training".format(self.comm_world.Get_rank()))
+                print("{} launching training".format(self.ranks()))
+                time.sleep( 30 )
                 histories = manager.train()
                 fom = manager.figure_of_merit()
-                return fom
+            ## need to reset this part to avoid cached values
+            self.algo.reset()
+            ## delete the object
+            del manager
+            return fom
 
     def send_result(self, result):
         if self.comm_block.Get_rank() == 0:
-            print("Sending result {} to coordinator".format(result))
+            print("{} sending result {} to coordinator".format(self.ranks(), result))
             self.comm_world.isend(result, dest=0, tag=tag_lookup('result')) 
 
     def run(self):
@@ -87,15 +97,15 @@ class ProcessBlock(object):
         Then trains it and returns the loss to the parent.
         """
         while True:
-            print("Process {} waiting for model".format(self.comm_world.Get_rank()))
+            print("{} waiting for model".format(self.ranks()))
             cur_builder = self.wait_for_model()
             if cur_builder == None:
-                print("Process {} received exit signal from coordinator".format(self.comm_world.Get_rank()))
+                print("{} received exit signal from coordinator".format(self.ranks()))
                 break
             
-            print("Process {} will train model".format(self.comm_world.Get_rank()))
+            print("{} will train model".format(self.ranks()))
             fom = self.train_model(cur_builder)
-            print("Process {} will send result if requested".format(self.comm_world.Get_rank()))
+            print("{} will send result if needed".format(self.ranks()))
             self.send_result(fom)
 
 
