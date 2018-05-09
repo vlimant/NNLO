@@ -69,6 +69,8 @@ class ProcessBlock(object):
                     return result
         else:
             print("{} creating MPIManager".format(self.ranks()))
+            ## need to reset this part to avoid cached values
+            self.algo.reset()
             manager = mm.MPIManager(
             #manager = mm.MPIKFoldManager( 5,
                                           self.comm_block, self.data, self.algo, model_builder,
@@ -80,8 +82,7 @@ class ProcessBlock(object):
                 time.sleep( 30 )
                 histories = manager.train()
                 fom = manager.figure_of_merit()
-            ## need to reset this part to avoid cached values
-            self.algo.reset()
+
             ## delete the object
             del manager
             return fom
