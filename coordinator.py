@@ -102,7 +102,7 @@ class Coordinator(object):
                 params = self.block_dict.pop(block_num)
                 self.param_list.append(params)
                 self.fom_list.append(result)
-                print("Telling {}".format(result))
+                print("Telling {} at {}".format(result, params))
                 self.tell( params, result )
                 del self.req_dict[block_num]
                 return True
