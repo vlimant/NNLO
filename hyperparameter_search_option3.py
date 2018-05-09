@@ -68,6 +68,7 @@ def make_parser():
             help='number of MPI processes per block')
     parser.add_argument('--num_iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
+    parser.add_argument('--example', default='mnist')
     return parser
 
 
