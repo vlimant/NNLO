@@ -66,6 +66,8 @@ def make_parser():
 
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
+    parser.add_argument('--num_iterations', type=int, default=10,
+                        help='The number of steps in the skopt process')
     return parser
 
 
@@ -156,7 +158,7 @@ if __name__ == '__main__':
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters)
-        opt_coordinator.run(num_iterations=30)
+        opt_coordinator.run(num_iterations=args.num_iterations)
     else:
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
