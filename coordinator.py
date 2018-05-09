@@ -80,7 +80,7 @@ class Coordinator(object):
         In a loop, checks each block of processes to see if it's
         idle.  This function blocks until there is an available process.
         """
-        blocklist = list(range(1, self.num_blocks))
+        blocklist = list(range(1, self.num_blocks+1))
         
         while True:
             self.fit()
@@ -88,6 +88,7 @@ class Coordinator(object):
             for cur_block in blocklist:
                 idle = self.check_block(cur_block)
                 if idle:
+                    print ("from coordinator, block {} is found idling, and being used next".format( cur_block))
                     return cur_block
 
     def check_block(self, block_num):
@@ -115,8 +116,8 @@ class Coordinator(object):
         # block to start training
         block_size = int((self.comm.Get_size()-1)/self.num_blocks)
         start = (block_num-1) * block_size + 1 
-        end = block_num * block_size + 1 
-        print("Launching block {}".format(block_num))
-        for proc in range(start, end):
+        end = block_num * block_size 
+        print("Launching block {}. Sending params to nodes from {} to {}".format(block_num, start,end))
+        for proc in range(start, end+1):
             self.comm.send(params, dest=proc, tag=tag_lookup('params')) 
         self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))
