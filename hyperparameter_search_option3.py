@@ -76,9 +76,9 @@ def make_parser():
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
-    parser.add_argument('--num_iterations', type=int, default=10,
+    parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
-    parser.add_argument('--example', default='mnist', choices['topclass','mnist','gan'])
+    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
     return parser
 
 
