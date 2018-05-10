@@ -17,7 +17,7 @@ from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.train.GanModel import GANBuilder
-from skopt.space import Real, Integer
+from skopt.space import Real, Integer, Categorical
 
 class BuilderFromFunction(object):
     def __init__(self, model_fn, parameters):
@@ -78,7 +78,7 @@ def make_parser():
             help='number of MPI processes per block')
     parser.add_argument('--num_iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
-    parser.add_argument('--example', default='mnist')
+    parser.add_argument('--example', default='mnist', choices['topclass','mnist','gan'])
     return parser
 
 
@@ -90,9 +90,6 @@ if __name__ == '__main__':
     check_sanity(args)
 
 
-    #test = 'topclass'
-    #test = 'mnist'
-    #test = 'gan'
     test = args.example
     if test == 'topclass':
         ### topclass example
@@ -128,7 +125,10 @@ if __name__ == '__main__':
     elif test == 'gan':
         ### the gan example
         model_provider = GANBuilder( parameters = [ Integer(50,400, name='latent_size' ),
-                                                    Real(0.0, 1.0, name='discr_drop_out')
+                                                    Real(0.0, 1.0, name='discr_drop_out'),
+                                                    Categorical([1, 2, 5, 6, 8], name='gen_weight'),
+                                                    Categorical([0.1, 0.2, 1, 2, 10], name='aux_weight'),
+                                                    Categorical([0.1, 0.2, 1, 2, 10], name='ecal_weight'),
                                                 ]
         )
         ## only this mode functions
