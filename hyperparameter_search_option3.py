@@ -63,7 +63,17 @@ def make_parser():
             dest='early_stopping', help='patience for early stopping')
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
-
+    ############################
+    ## EASGD block of option
+    parser.add_argument('--easgd',help='use Elastic Averaging SGD',action='store_true')
+    parser.add_argument('--worker-optimizer',help='optimizer for workers to use',
+            dest='worker_optimizer', default='sgd')
+    parser.add_argument('--elastic-force',help='beta parameter for EASGD',type=float,default=0.9)
+    parser.add_argument('--elastic-lr',help='worker SGD learning rate for EASGD',
+            type=float, default=1.0, dest='elastic_lr')
+    parser.add_argument('--elastic-momentum',help='worker SGD momentum for EASGD',
+            type=float, default=0, dest='elastic_momentum')
+    ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
     parser.add_argument('--num_iterations', type=int, default=10,
@@ -81,8 +91,9 @@ if __name__ == '__main__':
 
 
     #test = 'topclass'
-    test = 'mnist'
+    #test = 'mnist'
     #test = 'gan'
+    test = args.example
     if test == 'topclass':
         ### topclass example
         model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
@@ -120,13 +131,15 @@ if __name__ == '__main__':
                                                     Real(0.0, 1.0, name='discr_drop_out')
                                                 ]
         )
-
+        ## only this mode functions
+        args.easgd = True
+        args.worker_optimizer = 'rmsprop'
         all_list = glob.glob('/scratch/snx3000/vlimant/3DGAN/*.h5')
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
-        features_name='features'
-        labels_name='labels'
+        features_name='X'
+        labels_name='y'
         
     print (len(train_list),"train files",len(val_list),"validation files")
     print("Initializing...")
@@ -171,8 +184,21 @@ if __name__ == '__main__':
         data.set_file_names( train_list )
         validate_every = data.count_data()/args.batch 
         print (data.count_data(),"samples to train on")
-        algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
-                sync_every=args.sync_every) 
+        if args.easgd:
+            algo = Algo(None, loss=args.loss, validate_every=validate_every,
+                        mode='easgd', sync_every=args.sync_every,
+                        worker_optimizer=args.worker_optimizer,
+                        elastic_force=args.elastic_force/(comm_block.Get_size()-1),
+                        elastic_lr=args.elastic_lr, 
+                        elastic_momentum=args.elastic_momentum) 
+        else:
+            algo = Algo(args.optimizer, 
+                        loss=args.loss, 
+                        validate_every=validate_every,
+                        sync_every=args.sync_every,
+                        worker_optimizer=args.worker_optimizer
+                    )
+ 
         os.environ['KERAS_BACKEND'] = backend
         import_keras()
         import keras.callbacks as cbks
