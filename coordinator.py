@@ -1,5 +1,6 @@
 import skopt 
 import random
+import pickle 
 
 from tag_lookup import tag_lookup
 
@@ -45,6 +46,16 @@ class Coordinator(object):
             self.next_params = self.optimizer.ask( n_iter )
         return self.next_params.pop(-1)
 
+    def save(self, fn = 'coordinator.pkl'):
+        d= open(fn,'wb')
+        pickle.dump( self.optimizer, d )
+        d.close()
+
+    def load(self, fn= 'coordinator.pkl'):
+        d = open(fn, 'rb')
+        self.optimizer = pickle.load( d )
+        d.close()
+
     def fit(self):
         X = [o[0] for o in self.to_tell]
         Y = [o[1] for o in self.to_tell]
@@ -55,6 +66,8 @@ class Coordinator(object):
             print("New best param estimate, with telling {} points : {}".format(len(X),self.best_params))
             self.next_params = []
             self.to_tell = []
+            ## checkpoint your self
+            self.save()
 
     def tell(self, params, result):
         self.to_tell.append( (params, result) )
