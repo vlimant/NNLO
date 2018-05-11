@@ -76,6 +76,8 @@ def make_parser():
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
+    parser.add_argument('--n-fold', type=int, default=1, dest='n_fold',
+                        help='Number of folds used to estimate the figure of merit')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
@@ -217,5 +219,7 @@ if __name__ == '__main__':
                 verbose=1 ) )
         block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
-                                           args.epochs, train_list, val_list, callbacks, verbose=args.verbose)
+                                           args.epochs, train_list, val_list, 
+                                           folds = args.n_fold,
+                                           callbacks=callbacks, verbose=args.verbose)
         block.run()

@@ -26,10 +26,11 @@ class ProcessBlock(object):
     """
 
     def __init__(self, comm_world, comm_block, algo, data, device, model_provider,
-                 epochs, train_list, val_list, callbacks=None, verbose=False):
+                 epochs, train_list, val_list, folds=1, callbacks=None, verbose=False):
         print("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
+        self.folds = folds
         self.algo = algo
         self.data = data
         self.device = device
@@ -71,24 +72,21 @@ class ProcessBlock(object):
             print("{} creating MPIManager".format(self.ranks()))
             ## need to reset this part to avoid cached values
             self.algo.reset()
-            manager = mm.MPIManager(
-            #manager = mm.MPIKFoldManager( 5,
+            manager = mm.MPIKFoldManager( self.folds,
                                           self.comm_block, self.data, self.algo, model_builder,
                                           self.epochs, self.train_list, self.val_list, callbacks=self.callbacks,
                                           verbose=self.verbose)
-            fom = None
-            if self.comm_block.Get_rank() == 0:
-                print("{} launching training".format(self.ranks()))
-                time.sleep( 30 )
-                histories = manager.train()
-                fom = manager.figure_of_merit()
-
+            #if self.comm_block.Get_rank() == 0:
+            #    print("{} launching training".format(self.ranks()))
+            manager.train()
+            fom = manager.figure_of_merit()
             ## delete the object
             del manager
             return fom
 
     def send_result(self, result):
         if self.comm_block.Get_rank() == 0:
+            ## only the rank=0 in the block is sending back his fom
             print("{} sending result {} to coordinator".format(self.ranks(), result))
             self.comm_world.isend(result, dest=0, tag=tag_lookup('result')) 
 
