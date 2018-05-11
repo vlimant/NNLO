@@ -99,10 +99,12 @@ if __name__ == '__main__':
                                                              Real(1.,10., name = 'llr')
                                                          ]
                                           )
-        #train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
-        #val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
-        train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
-        val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
+        if 'daint' in os.environ['HOST']:
+            train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
+            val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
+        else:
+            train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
+            val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
         features_name='Images'
         labels_name='Labels'
     elif test == 'mnist':
@@ -115,7 +117,10 @@ if __name__ == '__main__':
                                                              Real(0.0, 1.0, name='dropout')
                                                          ]
         )
-        all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
+        if 'daint' in os.environ['HOST']:
+            all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
+        else:
+            all_list = []
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
@@ -134,7 +139,11 @@ if __name__ == '__main__':
         ## only this mode functions
         args.easgd = True
         args.worker_optimizer = 'rmsprop'
-        all_list = glob.glob('/scratch/snx3000/vlimant/3DGAN/*.h5')
+        if 'daint' in os.environ['HOST']:
+            all_list = glob.glob('/scratch/snx3000/vlimant/data/3DGAN/*.h5')
+        else:
+            all_list = glob.glob('/data/shared/3DGAN/*.h5')
+
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
