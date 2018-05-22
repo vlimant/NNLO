@@ -143,7 +143,7 @@ if __name__ == '__main__':
         ## only this mode functions
         args.easgd = True
         args.worker_optimizer = 'rmsprop'
-        if 'daint' in os.environ['HOST']:
+        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
             all_list = glob.glob('/scratch/snx3000/vlimant/data/3DGAN/*.h5')
         else:
             all_list = glob.glob('/data/shared/3DGAN/*.h5')
