@@ -156,8 +156,10 @@ def test_mnist(**args):
         input_shape = (img_rows, img_cols, 1)
     model = Sequential()
     #model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
+    ## suggested Conv2D(23, padding="valid", kernel_size=(2, 2), input_shape=(28, 28, 1...)`
     model.add(Conv2D(nb_filters, kernel_size = kernel_size,
-                     border_mode='valid',
+                     #order_mode='valid',
+                     padding="valid",
                      input_shape=input_shape))
     model.add(Activation('relu'))
     #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1]))
