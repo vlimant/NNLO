@@ -1,4 +1,6 @@
 import skopt 
+import random
+import pickle 
 
 from tag_lookup import tag_lookup
 
@@ -21,31 +23,68 @@ class Coordinator(object):
     best_params: best parameter set found by Bayesian optimization
     """
 
-    def __init__(self, comm, num_blocks, opt_params,
-            model_fn):
+    def __init__(self, comm, num_blocks,
+                 opt_params):
         print("Coordinator initializing")
         self.comm = comm
         self.num_blocks = num_blocks
+
         self.opt_params = opt_params
-        self.model_fn = model_fn
-       
-        self.optimizer = skopt.Optimizer(opt_params)
+        self.optimizer = skopt.Optimizer(dimensions=self.opt_params)
         self.param_list = []
         self.fom_list = []
         self.block_dict = {}
         self.req_dict = {}
         self.best_params = None
 
+        self.next_params = []
+        self.to_tell = []
+
+    def ask(self, n_iter):
+        if not self.next_params:
+            ## don't ask every single time
+            self.next_params = self.optimizer.ask( n_iter )
+        return self.next_params.pop(-1)
+
+    def save(self, fn = 'coordinator.pkl'):
+        d= open(fn,'wb')
+        pickle.dump( self.optimizer, d )
+        d.close()
+
+    def load(self, fn= 'coordinator.pkl'):
+        d = open(fn, 'rb')
+        self.optimizer = pickle.load( d )
+        d.close()
+
+    def fit(self):
+        X = [o[0] for o in self.to_tell]
+        Y = [o[1] for o in self.to_tell]
+
+        if X and Y:
+            opt_result = self.optimizer.tell( X, Y )
+            self.best_params = opt_result.x
+            print("New best param estimate, with telling {} points : {}".format(len(X),self.best_params))
+            self.next_params = []
+            self.to_tell = []
+            ## checkpoint your self
+            self.save()
+
+    def tell(self, params, result):
+        self.to_tell.append( (params, result) )
+        tell_right_away = False
+        if tell_right_away:
+            self.fit()
+        
     def run(self, num_iterations=1):
         for step in range(num_iterations):
             print("Coordinator iteration {}".format(step))
             next_block = self.wait_for_idle_block()
-            next_params = self.optimizer.ask()
+            next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params) 
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
-            self.comm.send('exit', dest=proc, tag=tag_lookup('json')) 
+            self.comm.send(None, dest=proc, tag=tag_lookup('params')) 
         print("Finished all iterations!")
         print("Best parameters found: {}".format(self.best_params))
         
@@ -54,32 +93,30 @@ class Coordinator(object):
         In a loop, checks each block of processes to see if it's
         idle.  This function blocks until there is an available process.
         """
-        cur_block = 1
+        blocklist = list(range(1, self.num_blocks+1))
+        
         while True:
-            idle = self.check_block(cur_block)
-            if idle:
-                return cur_block
-            cur_block += 1
-            if cur_block > self.num_blocks:
-                cur_block = 1
+            self.fit()
+            random.shuffle( blocklist ) ## look at them in random order
+            for cur_block in blocklist:
+                idle = self.check_block(cur_block)
+                if idle:
+                    print ("from coordinator, block {} is found idling, and being used next".format( cur_block))
+                    return cur_block
 
     def check_block(self, block_num):
         """
         If the indicated block has completed a training run, store the results.
         Returns True if the block is ready to train a new model, False otherwise.
         """
-        block_size = int((self.comm.Get_size()-1)/self.num_blocks)
-        proc = (block_num-1) * block_size + 1 
         if block_num in self.block_dict:
             done, result = self.req_dict[block_num].test()
             if done:
                 params = self.block_dict.pop(block_num)
                 self.param_list.append(params)
                 self.fom_list.append(result)
-                print("Telling {}".format(result))
-                opt_result = self.optimizer.tell(params, result)
-                self.best_params = opt_result.x
-                print("New best param estimate: {}".format(self.best_params))
+                print("Telling {} at {}".format(result, params))
+                self.tell( params, result )
                 del self.req_dict[block_num]
                 return True
             return False
@@ -88,13 +125,12 @@ class Coordinator(object):
 
     def run_block(self, block_num, params):
         self.block_dict[block_num] = params
-        model_json = self.model_fn(*params)
         # In the current setup, we need to signal each GPU in the 
         # block to start training
         block_size = int((self.comm.Get_size()-1)/self.num_blocks)
         start = (block_num-1) * block_size + 1 
-        end = block_num * block_size + 1 
-        print("Launching block {}".format(block_num))
-        for proc in range(start, end):
-            self.comm.send(model_json, dest=proc, tag=tag_lookup('json')) 
+        end = block_num * block_size 
+        print("Launching block {}. Sending params to nodes from {} to {}".format(block_num, start,end))
+        for proc in range(start, end+1):
+            self.comm.send(params, dest=proc, tag=tag_lookup('params')) 
         self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))

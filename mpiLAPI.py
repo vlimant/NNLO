@@ -14,6 +14,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 import tensorflow as tf
+import numpy as np
+import keras.backend as K
 
 class mpi_learn_api:
     def __init__(self, **args):
@@ -133,7 +135,48 @@ class mpi_learn_api:
         else:
             return Popen(com, shell=True)
 
-def test_cnn(dropout=0.5, kernel_size = 3, lr = 1e-3):
+def test_mnist(**args):
+    """MNIST ConvNet from keras/examples/mnist_cnn.py"""
+    nb_classes = 10
+    # input image dimensions
+    img_rows, img_cols = 28, 28
+    # number of convolutional filters to use
+    nb_filters = args.get('nb_filters',32)
+    # size of pooling area for max pooling
+    ps = args.get('pool_size',2)
+    pool_size = (ps,ps)
+    # convolution kernel size
+    ks = args.get('kernel_size',3)
+    kernel_size = (ks, ks)
+    do = args.get('drop_out', 0.25)
+    dense = args.get('dense', 128)
+    if K.image_dim_ordering() == 'th':
+        input_shape = (1, img_rows, img_cols)
+    else:
+        input_shape = (img_rows, img_cols, 1)
+    model = Sequential()
+    #model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
+    model.add(Conv2D(nb_filters, kernel_size = kernel_size,
+                     border_mode='valid',
+                     input_shape=input_shape))
+    model.add(Activation('relu'))
+    #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1]))
+    model.add(Conv2D(nb_filters, kernel_size = kernel_size))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(do))
+    model.add(Flatten())
+    model.add(Dense(dense))
+    model.add(Activation('relu'))
+    model.add(Dropout(do))
+    model.add(Dense(nb_classes))
+    model.add(Activation('softmax'))
+    return model.to_json()
+
+def test_cnn(**args):
+    dropout= args.get('dropout',0.5)
+    kernel_size = args.get('kernel_size',3)
+    lr = args.get('lr', np.exp(-args.get('llr',np.log(1./1e-3))))
     model = Sequential()
 
     model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=(150,94,5)))
