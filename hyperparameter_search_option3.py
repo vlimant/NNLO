@@ -101,7 +101,7 @@ if __name__ == '__main__':
                                                              Real(1.,10., name = 'llr')
                                                          ]
                                           )
-        if 'daint' in os.environ['HOST']:
+        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
         else:
@@ -119,10 +119,10 @@ if __name__ == '__main__':
                                                              Real(0.0, 1.0, name='dropout')
                                                          ]
         )
-        if 'daint' in os.environ['HOST']:
+        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
             all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
         else:
-            all_list = []
+            all_list = glob.glob('/bigdata/shared/mnist/*.h5')
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
