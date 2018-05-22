@@ -78,6 +78,8 @@ def make_parser():
             help='number of MPI processes per block')
     parser.add_argument('--n-fold', type=int, default=1, dest='n_fold',
                         help='Number of folds used to estimate the figure of merit')
+    parser.add_argument('--n-master', type=int, default=1, dest='n_master',
+                        help='Number of master per group')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
@@ -221,5 +223,6 @@ if __name__ == '__main__':
                                            model_provider,
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,
+                                           num_masters = args.n_master,
                                            callbacks=callbacks, verbose=args.verbose)
         block.run()
