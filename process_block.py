@@ -113,5 +113,6 @@ class ProcessBlock(object):
             fom = self.train_model(cur_builder)
             print("{} will send result if needed".format(self.ranks()))
             self.send_result(fom)
+        self.comm_world.Barrier()
 
 
