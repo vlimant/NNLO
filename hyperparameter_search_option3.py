@@ -173,6 +173,23 @@ if __name__ == '__main__':
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
+    import keras.backend as K
+    hide_device = True
+    if hide_device:
+        os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+        print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'])
+    gpu_options=K.tf.GPUOptions(
+        per_process_gpu_memory_fraction=0.1,
+        allow_growth = True,
+        visible_device_list = device[-1] if 'gpu' in device else '')
+    if hide_device:
+        gpu_options=K.tf.GPUOptions(
+                            per_process_gpu_memory_fraction=0.0,
+            allow_growth = True,)        
+    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        allow_soft_placement=True, log_device_placement=False,
+        gpu_options=gpu_options
+    ) ) )    
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
     print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
