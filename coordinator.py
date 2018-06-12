@@ -84,7 +84,8 @@ class Coordinator(object):
             self.run_block(next_block, next_params) 
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
-            self.comm.send(None, dest=proc, tag=tag_lookup('params')) 
+            self.comm.send(None, dest=proc, tag=tag_lookup('params'))
+        self.comm.Barrier()
         print("Finished all iterations!")
         print("Best parameters found: {}".format(self.best_params))
         

@@ -80,6 +80,8 @@ def make_parser():
                         help='Number of folds used to estimate the figure of merit')
     parser.add_argument('--n-master', type=int, default=1, dest='n_master',
                         help='Number of master per group')
+    parser.add_argument('--n-process', type=int, default=1, dest='n_process',
+                        help='Number of process per worker instance')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
@@ -171,6 +173,23 @@ if __name__ == '__main__':
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
+    import keras.backend as K
+    hide_device = True
+    if hide_device:
+        os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+        print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'])
+    gpu_options=K.tf.GPUOptions(
+        per_process_gpu_memory_fraction=0.1,
+        allow_growth = True,
+        visible_device_list = device[-1] if 'gpu' in device else '')
+    if hide_device:
+        gpu_options=K.tf.GPUOptions(
+                            per_process_gpu_memory_fraction=0.0,
+            allow_growth = True,)        
+    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        allow_soft_placement=True, log_device_placement=False,
+        gpu_options=gpu_options
+    ) ) )    
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
     print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
@@ -179,8 +198,36 @@ if __name__ == '__main__':
                                                                                               comm_block.Get_rank()
                                                                                             ))
     ## you need to sync every one up here
-    all_block_nums = comm_world.allgather( block_num )
-    print ("we gathered all these blocks {}".format( all_block_nums ))
+    #all_block_nums = comm_world.allgather( block_num )
+    #print ("we gathered all these blocks {}".format( all_block_nums ))
+
+    if args.n_process>1:
+        t_b_processes= []
+        if block_num !=0:
+            _,_, b_processes = mm.get_groups(comm_block, args.n_master, args.n_process)
+            ## collect all block=>world rank translation
+            r2r = (comm_block.Get_rank() , comm_world.Get_rank())
+            all_r2r = comm_block.allgather( r2r )
+            translate = dict( all_r2r ) #key is the rank in block, value is rank in world
+            t_b_processes = []
+            for pr in b_processes:
+                t_pr = []
+                for p in pr:
+                    t_pr.append( translate[p])
+                t_b_processes.append( t_pr )
+            #print ("translate process ranks from ",b_processes,"to",t_b_processes)
+        
+        #need to collect all the processes lists
+        all_t_b_processes = comm_world.allgather( t_b_processes )
+        w_processes = set()
+        for gb in all_t_b_processes:
+            if gb:
+                hgb = map(tuple, gb)
+                w_processes.update( hgb )
+        if block_num == 0:
+            print ("all collect processes",w_processes)
+            ## now you have the ranks that needs to be initialized in rings.
+        
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
@@ -224,5 +271,6 @@ if __name__ == '__main__':
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,
                                            num_masters = args.n_master,
+                                           num_process = args.n_process,
                                            callbacks=callbacks, verbose=args.verbose)
         block.run()
