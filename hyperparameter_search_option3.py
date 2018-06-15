@@ -63,6 +63,9 @@ def make_parser():
             dest='early_stopping', help='patience for early stopping')
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
+    parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
+    parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
+
     ############################
     ## EASGD block of option
     parser.add_argument('--easgd',help='use Elastic Averaging SGD',action='store_true')
@@ -237,7 +240,9 @@ if __name__ == '__main__':
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
                                                                                  comm_block.Get_rank()))
-        data = H5Data(batch_size=args.batch, 
+        data = H5Data(batch_size=args.batch,
+                      cache = args.caching_dir,
+                      preloading = args.data_preload,
                       features_name=features_name,
                       labels_name=labels_name
         )
