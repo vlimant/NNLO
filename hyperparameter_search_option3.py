@@ -12,10 +12,9 @@ from mpi4py import MPI
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJsonTF
+from mpi_learn.train.model import ModelFromJsonTF, ModelPytorch
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
-from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
 
@@ -30,6 +29,15 @@ class BuilderFromFunction(object):
         return ModelFromJsonTF(None,
                                json_str=model_json)
 
+class TorchBuilderFromFunction(BuilderFromFunction):
+    def __init__(self, model_fn, parameters):
+        super().__init__(model_fn, parameters)
+
+    def buider(self, *params):
+        args = dict(zip([p.name for p in self.parameters], params))
+        model_pytorch = self.model_fn(**args)
+        return ModelPytorch(None, filename=model_pytorch) 
+        
 import coordinator
 import process_block
 import mpiLAPI as mpi
@@ -78,6 +86,7 @@ def make_parser():
             type=float, default=1.0, dest='elastic_lr')
     parser.add_argument('--elastic-momentum',help='worker SGD momentum for EASGD',
             type=float, default=0, dest='elastic_momentum')
+    
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
@@ -92,6 +101,8 @@ def make_parser():
     parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
+    parser.add_argument('--torch', action='store_true',
+                        help='Use PyTorch instead of (default) Keras')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
     return parser
 
@@ -107,12 +118,20 @@ if __name__ == '__main__':
     test = args.example
     if test == 'topclass':
         ### topclass example
-        model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
-                                              parameters = [ Real(0.0, 1.0, name='dropout'),
-                                                             Integer(1,6, name='kernel_size'),
-                                                             Real(1.,10., name = 'llr')
-                                                         ]
-                                          )
+        if not args.torch:
+            model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
+                                                  parameters = [ Real(0.0, 1.0, name='dropout'),
+                                                                 Integer(1,6, name='kernel_size'),
+                                                                 Real(1.,10., name = 'llr')
+                                                             ]
+                                              )
+        else:
+            model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_cnn,
+                                                parameters = [ Integer(1,6, name='conv_layers'),
+                                                               Integer(1,6, name='dense_layers'),
+                                                               Real(0.0,1.0, name='dropout')
+                                                               ]
+                                                )
         if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
