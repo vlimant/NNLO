@@ -87,6 +87,9 @@ def make_parser():
                         help='Number of process per worker instance')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
+    parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
+    parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
+                        help='A value to reach and stop in the parameter optimisation')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
     return parser
 
@@ -235,6 +238,8 @@ if __name__ == '__main__':
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters)
+        if args.previous_state: opt_coordinator.load(args.previous_state)
+        if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
     else:
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),

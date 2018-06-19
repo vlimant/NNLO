@@ -30,16 +30,19 @@ class Coordinator(object):
         self.num_blocks = num_blocks
 
         self.opt_params = opt_params
-        self.optimizer = skopt.Optimizer(dimensions=self.opt_params)
+        self.optimizer = skopt.Optimizer(dimensions=self.opt_params, random_state= 13579)
         self.param_list = []
         self.fom_list = []
         self.block_dict = {}
         self.req_dict = {}
         self.best_params = None
+        self.best_fom = None
 
         self.next_params = []
         self.to_tell = []
-
+        self.ends_cycle = False
+        self.target_fom = None
+        
     def ask(self, n_iter):
         if not self.next_params:
             ## don't ask every single time
@@ -53,6 +56,7 @@ class Coordinator(object):
 
     def load(self, fn= 'coordinator.pkl'):
         d = open(fn, 'rb')
+        print ("loading the coordinator optimizer from",fn)
         self.optimizer = pickle.load( d )
         d.close()
 
@@ -61,13 +65,18 @@ class Coordinator(object):
         Y = [o[1] for o in self.to_tell]
 
         if X and Y:
+            print ("Fitting from {} values".format( len (X)))
             opt_result = self.optimizer.tell( X, Y )
             self.best_params = opt_result.x
-            print("New best param estimate, with telling {} points : {}".format(len(X),self.best_params))
+            self.best_fom = opt_result.fun
+            print("New best param estimate, with telling {} points : {}, with value {}".format(len(X),self.best_params, self.best_fom))
             self.next_params = []
             self.to_tell = []
             ## checkpoint your self
             self.save()
+            if self.target_fom and opt_result.fun < self.target_fom:
+                print ("the optimization has reached the desired value at optimum",self.target_fom)
+                self.ends_cycle = True
 
     def tell(self, params, result):
         self.to_tell.append( (params, result) )
@@ -79,15 +88,19 @@ class Coordinator(object):
         for step in range(num_iterations):
             print("Coordinator iteration {}".format(step))
             next_block = self.wait_for_idle_block()
+            if self.ends_cycle:
+                print("Coordinator is skiping the iteration cycle")
+                break
             next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
-            self.run_block(next_block, next_params) 
+            self.run_block(next_block, next_params)
+            
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
             self.comm.send(None, dest=proc, tag=tag_lookup('params'))
         self.comm.Barrier()
         print("Finished all iterations!")
-        print("Best parameters found: {}".format(self.best_params))
+        print("Best parameters found: {} with value {}".format(self.best_params, self.best_fom))
         
     def wait_for_idle_block(self):
         """
@@ -98,11 +111,11 @@ class Coordinator(object):
         
         while True:
             self.fit()
-            random.shuffle( blocklist ) ## look at them in random order
+            random.shuffle( blocklist )
             for cur_block in blocklist:
                 idle = self.check_block(cur_block)
                 if idle:
-                    print ("from coordinator, block {} is found idling, and being used next".format( cur_block))
+                    print ("From coordinator, block {} is found idling, and can be used next".format( cur_block))
                     return cur_block
 
     def check_block(self, block_num):
