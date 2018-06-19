@@ -21,7 +21,6 @@ class ProcessBlock(object):
     epochs: number of training epochs
     train_list: list of training data files
     val_list: list of validation data files
-    callbacks: list of callback objects
     verbose: print detailed output from underlying mpi_learn machinery
     """
 
@@ -29,7 +28,9 @@ class ProcessBlock(object):
                  epochs, train_list, val_list, folds=1,
                  num_masters=1,
                  num_process=1,
-                 callbacks=None, verbose=False):
+                 verbose=False,
+                 early_stopping=None,
+                 target_metric=None):
         print("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
@@ -43,9 +44,10 @@ class ProcessBlock(object):
         self.epochs = epochs
         self.train_list = train_list
         self.val_list = val_list
-        self.callbacks = callbacks
         self.verbose = verbose
-
+        self.last_params = None
+        self.early_stopping=early_stopping
+        self.target_metric=target_metric
     def ranks(self):
         return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
 
@@ -55,7 +57,8 @@ class ProcessBlock(object):
         indicating the model that should be trained.
         """
         print("{} waiting for model params".format(self.ranks()))
-        params = self.comm_world.recv(source=0, tag=tag_lookup('params'))
+        self.last_params = self.comm_world.recv(source=0, tag=tag_lookup('params'))
+        params = self.last_params
         if params is not None:
             print ("{} received parameters {}".format( self.ranks(), params))
             model_builder = self.model_provider.builder(*params)
@@ -79,15 +82,17 @@ class ProcessBlock(object):
             self.algo.reset()
             manager = mm.MPIKFoldManager( self.folds,
                                           self.comm_block, self.data, self.algo, model_builder,
-                                          self.epochs, self.train_list, self.val_list, callbacks=self.callbacks,
+                                          self.epochs, self.train_list, self.val_list,
                                           num_masters=self.num_masters,
                                           num_process=self.num_process,
-                                          verbose=self.verbose)
-            #if self.comm_block.Get_rank() == 0:
-            #    print("{} launching training".format(self.ranks()))
+                                          verbose=self.verbose,
+                                          early_stopping=self.early_stopping,
+                                          target_metric=self.target_metric)
             manager.train()
             fom = manager.figure_of_merit()
-            manager.free_comms()
+            manager.manager.process.record_details(meta={'parameters': list(map(float,self.last_params)),
+                                                         'fold' : manager.fold_num})
+            manager.free_comms()            
             return fom
 
     def send_result(self, result):
