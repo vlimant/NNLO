@@ -57,6 +57,7 @@ class CNN(nn.Module):
         self.output = nn.Linear(int(10000//(2**args[1])), int(args[3]))
 
     def forward(self, x):
+        x = x.permute(0,3,1,2).float()        
         x = self.conv_layers(x)
         x = self.adapt_pool(x)
         x = x.view(x.shape[0], -1) # flatten
