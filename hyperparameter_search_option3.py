@@ -33,7 +33,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
     def __init__(self, model_fn, parameters):
         super().__init__(model_fn, parameters)
 
-    def buider(self, *params):
+    def builder(self, *params):
         args = dict(zip([p.name for p in self.parameters], params))
         model_pytorch = self.model_fn(**args)
         return ModelPytorch(None, filename=model_pytorch) 
