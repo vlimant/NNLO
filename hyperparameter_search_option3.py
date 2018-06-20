@@ -203,23 +203,30 @@ if __name__ == '__main__':
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
-    import keras.backend as K
     hide_device = True
     if hide_device:
         os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
         print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'])
-    gpu_options=K.tf.GPUOptions(
-        per_process_gpu_memory_fraction=0.1,
-        allow_growth = True,
-        visible_device_list = device[-1] if 'gpu' in device else '')
-    if hide_device:
+
+    if not args.torch:
+        import keras.backend as K
         gpu_options=K.tf.GPUOptions(
-                            per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)        
-    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-        allow_soft_placement=True, log_device_placement=False,
-        gpu_options=gpu_options
-    ) ) )    
+            per_process_gpu_memory_fraction=0.1,
+            allow_growth = True,
+            visible_device_list = device[-1] if 'gpu' in device else '')
+        if hide_device:
+            gpu_options=K.tf.GPUOptions(
+                per_process_gpu_memory_fraction=0.0,
+                allow_growth = True,)        
+        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=False,
+            gpu_options=gpu_options
+        ) ) )
+    else:
+        import torch
+        if 'gpu' in device and not hide_device:
+            torch.cuda.set_device(int(device[-1]))
+        
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
     print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
@@ -227,10 +234,6 @@ if __name__ == '__main__':
                                                                                               block_num,
                                                                                               comm_block.Get_rank()
                                                                                             ))
-    ## you need to sync every one up here
-    #all_block_nums = comm_world.allgather( block_num )
-    #print ("we gathered all these blocks {}".format( all_block_nums ))
-
     if args.n_process>1:
         t_b_processes= []
         if block_num !=0:
@@ -245,7 +248,6 @@ if __name__ == '__main__':
                 for p in pr:
                     t_pr.append( translate[p])
                 t_b_processes.append( t_pr )
-            #print ("translate process ranks from ",b_processes,"to",t_b_processes)
         
         #need to collect all the processes lists
         all_t_b_processes = comm_world.allgather( t_b_processes )
@@ -257,7 +259,7 @@ if __name__ == '__main__':
         if block_num == 0:
             print ("all collect processes",w_processes)
             ## now you have the ranks that needs to be initialized in rings.
-        
+
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
