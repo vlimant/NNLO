@@ -87,8 +87,7 @@ class ProcessBlock(object):
             #    print("{} launching training".format(self.ranks()))
             manager.train()
             fom = manager.figure_of_merit()
-            ## delete the object
-            del manager
+            manager.free_comms()
             return fom
 
     def send_result(self, result):
@@ -103,6 +102,7 @@ class ProcessBlock(object):
         Then trains it and returns the loss to the parent.
         """
         while True:
+            self.comm_block.Barrier()
             print("{} waiting for model".format(self.ranks()))
             cur_builder = self.wait_for_model()
             if cur_builder == None:
