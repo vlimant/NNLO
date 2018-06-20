@@ -30,7 +30,7 @@ class BuilderFromFunction(object):
         return ModelFromJsonTF(None,
                                json_str=model_json)
 
-import coordinator
+from coordinator import Coordinator
 import process_block
 import mpiLAPI as mpi
 
@@ -59,15 +59,14 @@ def make_parser():
     parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
     parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
     parser.add_argument('--loss',help='loss function',default='binary_crossentropy')
+    parser.add_argument('--early-stopping', type=int, 
+            dest='early_stopping', help='patience for early stopping')
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
-    parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
-    parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
-    parser.add_argument('--early-stopping', default=None,
-                        dest='early_stopping', help='patience for early stopping')
-    parser.add_argument('--target-metric', default=None,
-                        dest='target_metric', help='Passing configuration for a target metric')
-
+    parser.add_argument('--ga', help='use genetic algorithms instead of bayesian optimization', 
+            action='store_true')
+    parser.add_argument('--population', help='population size for genetic algorithm', 
+            default=10, type=int, dest='population')
     ############################
     ## EASGD block of option
     parser.add_argument('--easgd',help='use Elastic Averaging SGD',action='store_true')
@@ -89,10 +88,7 @@ def make_parser():
                         help='Number of process per worker instance')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
-    parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
-    parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
-                        help='A value to reach and stop in the parameter optimisation')
-    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
+    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan', 'cifar10'])
     return parser
 
 
@@ -165,9 +161,9 @@ if __name__ == '__main__':
         ### the gan example
         model_provider = GANBuilder( parameters = [ Integer(50,400, name='latent_size' ),
                                                     Real(0.0, 1.0, name='discr_drop_out'),
-                                                    Categorical([1, 2, 5, 6, 8], name='gen_weight'),
-                                                    Categorical([0.1, 0.2, 1, 2, 10], name='aux_weight'),
-                                                    Categorical([0.1, 0.2, 1, 2, 10], name='ecal_weight'),
+                                                    Integer(1, 8, name='gen_weight'),
+                                                    Real(0.1, 10, name='aux_weight'),
+                                                    Real(0.1, 10, name='ecal_weight'),
                                                 ]
         )
         ## only this mode functions
@@ -178,12 +174,9 @@ if __name__ == '__main__':
         else:
             all_list = glob.glob('/data/shared/3DGAN/*.h5')
 
-        #l = int( len(all_list)*0.70)
-        #train_list = all_list[:l]
-        #val_list = all_list[l:]
-        N= MPI.COMM_WORLD.Get_size()        
-        train_list = all_list[:N]
-        val_list = all_list[-1:]
+        l = int( len(all_list)*0.70)
+        train_list = all_list[:l]
+        val_list = all_list[l:]
         features_name='X'
         labels_name='y'
         
@@ -261,26 +254,19 @@ if __name__ == '__main__':
         
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
-        opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
-                                                  model_provider.parameters)
-        if args.previous_state: opt_coordinator.load(args.previous_state)
-        if args.target_objective: opt_coordinator.target_fom = args.target_objective
+        opt_coordinator = Coordinator(comm_world, num_blocks,
+                                                  model_provider.parameters, args.ga, args.population)
         opt_coordinator.run(num_iterations=args.num_iterations)
     else:
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
                                                                                  comm_block.Get_rank()))
-        data = H5Data(batch_size=args.batch,
-                      cache = args.caching_dir,
-                      preloading = args.data_preload,
+        data = H5Data(batch_size=args.batch, 
                       features_name=features_name,
                       labels_name=labels_name
         )
-        print('found data')
         data.set_file_names( train_list )
-        print('set file names')
         validate_every = data.count_data()/args.batch 
-        print('validate every')
         print (data.count_data(),"samples to train on")
         if args.easgd:
             algo = Algo(None, loss=args.loss, validate_every=validate_every,
@@ -298,14 +284,17 @@ if __name__ == '__main__':
                     )
  
         os.environ['KERAS_BACKEND'] = backend
-        #import_keras()
+        import_keras()
+        import keras.callbacks as cbks
+        callbacks = []
+        if args.early_stopping is not None:
+            callbacks.append( cbks.EarlyStopping( patience=args.early_stopping,
+                verbose=1 ) )
         block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,
                                            num_masters = args.n_master,
                                            num_process = args.n_process,
-                                           verbose=args.verbose,
-                                           early_stopping=args.early_stopping,
-                                           target_metric=args.target_metric)
+                                           callbacks=callbacks, verbose=args.verbose)
         block.run()
