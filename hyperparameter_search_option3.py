@@ -136,8 +136,8 @@ if __name__ == '__main__':
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
         else:
-            train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
-            val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
+            train_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/train/04*.h5')
+            val_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/val/020*.h5')
         features_name='Images'
         labels_name='Labels'
     elif test == 'mnist':
