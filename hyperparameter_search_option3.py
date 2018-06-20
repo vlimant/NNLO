@@ -101,9 +101,9 @@ def make_parser():
     parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
+    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
     parser.add_argument('--torch', action='store_true',
                         help='Use PyTorch instead of (default) Keras')
-    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
     return parser
 
 
