@@ -203,9 +203,9 @@ def test_densenet(nb_classes = 3, img_dim = (150, 94, 5), depth = 10, nb_dense_b
 def test_pytorch_cnn(conv_layers=2, dense_layers=2, dropout=0.5, classes=3, in_channels=5):
     from PytorchCNN import CNN
     import torch
-    import getpass
     pytorch_cnn = CNN(conv_layers=conv_layers, dense_layers=dense_layers, dropout=dropout, classes=classes, in_channels=in_channels)
-    PATH = "/tmp/{}/test_pytorch_cnn.torch".format(getpass.getuser()) # To be determined where is the best location to save it
+    username = os.environ.get('USER')
+    PATH = "/tmp/{}/test_pytorch_cnn_{}_{}_{}.torch".format(username,conv_layers,dense_layers,dropout) # To be determined where is the best location to save it
     torch.save(pytorch_cnn, PATH) 
     return PATH
 
