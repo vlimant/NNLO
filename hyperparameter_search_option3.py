@@ -59,12 +59,14 @@ def make_parser():
     parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
     parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
     parser.add_argument('--loss',help='loss function',default='binary_crossentropy')
-    parser.add_argument('--early-stopping', type=int, 
-            dest='early_stopping', help='patience for early stopping')
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
     parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
     parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
+    parser.add_argument('--early-stopping', default=None,
+                        dest='early_stopping', help='patience for early stopping')
+    parser.add_argument('--target-metric', default=None,
+                        dest='target_metric', help='Passing configuration for a target metric')
 
     ############################
     ## EASGD block of option
@@ -156,9 +158,12 @@ if __name__ == '__main__':
         else:
             all_list = glob.glob('/data/shared/3DGAN/*.h5')
 
-        l = int( len(all_list)*0.70)
-        train_list = all_list[:l]
-        val_list = all_list[l:]
+        #l = int( len(all_list)*0.70)
+        #train_list = all_list[:l]
+        #val_list = all_list[l:]
+        N= MPI.COMM_WORLD.Get_size()        
+        train_list = all_list[:N]
+        val_list = all_list[-1:]
         features_name='X'
         labels_name='y'
         
@@ -270,17 +275,14 @@ if __name__ == '__main__':
                     )
  
         os.environ['KERAS_BACKEND'] = backend
-        import_keras()
-        import keras.callbacks as cbks
-        callbacks = []
-        if args.early_stopping is not None:
-            callbacks.append( cbks.EarlyStopping( patience=args.early_stopping,
-                verbose=1 ) )
+        #import_keras()
         block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,
                                            num_masters = args.n_master,
                                            num_process = args.n_process,
-                                           callbacks=callbacks, verbose=args.verbose)
+                                           verbose=args.verbose,
+                                           early_stopping=args.early_stopping,
+                                           target_metric=args.target_metric)
         block.run()
