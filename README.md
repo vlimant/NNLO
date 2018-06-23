@@ -23,7 +23,8 @@ To run with 5-fold cross validation : (1 opt master + (5 fold x (4 block x (1 ma
 mpirun -tag-output -n 101 python3 hyperparameter_search_option5.py --block-size 5 --example mnist --epochs 10 --num-iterations 10 --n-fold 5
 ```
 
-To run with a genetic algorithm instead of Bayesian optimization (note that the 
+To run with a genetic algorithm instead of Bayesian optimization:
 ```
-mpirun -tag-output -n 21  python3 hyperparameter_search_option5.py --block-size 5 --example mnist --epochs 10 --num-iterations 10 --ga
+mpirun -tag-output -n 21  python3 hyperparameter_search_option5.py --block-size 5 --example mnist --epochs 10 --num-iterations 10 --ga --population 20
 ```
+Note that compared to Bayesian optimization, the runtime increases by a factor of population size. However, similar results are generally achieved for the same iterations*population size compared to Bayesian optimization.
