@@ -1,6 +1,10 @@
 import skopt 
 import random
-import pickle 
+import json
+import os
+import pickle
+import time
+import hashlib
 from genetic_algorithm import GA
 from tag_lookup import tag_lookup
 
@@ -47,6 +51,8 @@ class Coordinator(object):
         self.to_tell = []
         self.ends_cycle = False
         self.target_fom = None
+        self.history = {}
+        self.label = None
         
     def ask(self, n_iter):
         if not self.next_params:
@@ -57,12 +63,22 @@ class Coordinator(object):
                 self.next_params = self.optimizer.ask( n_iter )
         return self.next_params.pop(-1)
 
-    def save(self, fn = 'coordinator.pkl'):
+    def record_details(self, json_name=None):
+        if json_name is None:
+            json_name = 'coordinator-{}-{}.json'.format( self.label, os.getpid())
+        with open(json_name, 'w') as out:
+            out.write( json.dumps( self.history, indent=2))
+            
+    def save(self, fn = None):
+        if fn is None:
+            fn = 'coordinator-{}-{}.pkl'.format( self.label, os.getpid())
+        self.history.setdefault('save',fn)
         d= open(fn,'wb')
         pickle.dump( self.optimizer, d )
         d.close()
 
     def load(self, fn= 'coordinator.pkl'):
+        self.history.setdefault('load',fn)
         d = open(fn, 'rb')
         print ("loading the coordinator optimizer from",fn)
         self.optimizer = pickle.load( d )
@@ -71,11 +87,11 @@ class Coordinator(object):
     def fit(self, step):
         X = [o[0] for o in self.to_tell]
         Y = [o[1] for o in self.to_tell]
-        
         if X and Y:
             if self.ga:
                 opt_result = self.optimizer.tell( X, Y, step//self.populationSize )
                 self.best_params = opt_result[0]
+                self.best_fom = opt_result[1]
             else:
                 print ("Fitting from {} values".format( len (X)))
                 opt_result = self.optimizer.tell( X, Y )
@@ -86,6 +102,9 @@ class Coordinator(object):
             self.to_tell = []
             ## checkpoint your self
             self.save()
+            self.history.setdefault('tell',[]).append({'X': [list(map(float,x)) for x in X], 'Y':Y,
+                                                       'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
+                                                       'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
             if self.target_fom and opt_result.fun < self.target_fom:
                 print ("the optimization has reached the desired value at optimum",self.target_fom)
                 self.ends_cycle = True
@@ -110,10 +129,12 @@ class Coordinator(object):
             next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
-            next_block = self.wait_for_idle_block(step)
-            next_params = self.ask(num_iterations)
-            print("Next block: {}, next params {}".format(next_block, next_params))
-            self.run_block(next_block, next_params, step) 
+
+        ## wait for all running block to finish their processing
+        self.close_blocks(step)
+        self.fit(step)
+        
+        ## end all processes
         for proc in range(1, self.comm.Get_size()):
             print("Signaling process {} to exit".format(proc))
             self.comm.send(None, dest=proc, tag=tag_lookup('params'))
@@ -137,6 +158,13 @@ class Coordinator(object):
                     print ("From coordinator, block {} is found idling, and can be used next".format( cur_block))
                     return cur_block
 
+    def close_blocks(self, step):
+        while self.block_dict:
+            print (len(self.block_dict),"blocks still running")
+            for block_num in list(self.block_dict.keys()):
+                self.check_block( block_num, step)
+            time.sleep(5)
+        
     def check_block(self, block_num, step):
         """
         If the indicated block has completed a training run, store the results.

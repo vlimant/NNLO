@@ -62,7 +62,7 @@ def check_sanity(args):
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
-
+    parser.add_argument('--label',default='hOpt')
     parser.add_argument('--batch', help='batch size', default=128, type=int)
     parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
     parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
@@ -305,7 +305,9 @@ if __name__ == '__main__':
                                                   (args.hyper_opt=='genetic'),args.population)
         if args.previous_state: opt_coordinator.load(args.previous_state)
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
+        opt_coordinator.label = args.label
         opt_coordinator.run(num_iterations=args.num_iterations)
+        opt_coordinator.record_details()
     else:
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
@@ -319,7 +321,7 @@ if __name__ == '__main__':
         print('found data')
         data.set_file_names( train_list )
         print('set file names')
-        validate_every = data.count_data()/args.batch 
+        validate_every = int(data.count_data()/args.batch )
         print('validate every')
         print (data.count_data(),"samples to train on")
         if args.easgd:
@@ -348,4 +350,5 @@ if __name__ == '__main__':
                                            verbose=args.verbose,
                                            early_stopping=args.early_stopping,
                                            target_metric=args.target_metric)
+        block.label = args.label
         block.run()

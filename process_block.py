@@ -1,6 +1,7 @@
 import time 
 import numpy as np
-
+import os
+import hashlib
 import mpi_learn.mpi.manager as mm
 import mpi_learn.train.model as model
 
@@ -48,6 +49,8 @@ class ProcessBlock(object):
         self.last_params = None
         self.early_stopping=early_stopping
         self.target_metric=target_metric
+        self.label = None
+        
     def ranks(self):
         return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
 
@@ -90,7 +93,11 @@ class ProcessBlock(object):
                                           target_metric=self.target_metric)
             manager.train()
             fom = manager.figure_of_merit()
-            manager.manager.process.record_details(meta={'parameters': list(map(float,self.last_params)),
+            manager.manager.process.record_details(
+                json_name='block-{}-{}-{}-{}-history.json'.format(self.label if self.label else "",
+                                                                  hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest(),
+                                                                  self.comm_world.Get_rank(),os.getpid()),
+                meta={'parameters': list(map(float,self.last_params)),
                                                          'fold' : manager.fold_num})
             manager.free_comms()            
             return fom
