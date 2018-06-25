@@ -148,14 +148,14 @@ def test_mnist(**args):
     # convolution kernel size
     ks = args.get('kernel_size',3)
     kernel_size = (ks, ks)
-    do = args.get('drop_out', 0.25)
+    do = args.get('dropout', 0.25)
     dense = args.get('dense', 128)
     if K.image_dim_ordering() == 'th':
         input_shape = (1, img_rows, img_cols)
     else:
         input_shape = (img_rows, img_cols, 1)
     model = Sequential()
-    #model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
+    #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1],
     ## suggested Conv2D(23, padding="valid", kernel_size=(2, 2), input_shape=(28, 28, 1...)`
     model.add(Conv2D(nb_filters, kernel_size = kernel_size,
                      #order_mode='valid',
@@ -173,6 +173,75 @@ def test_mnist(**args):
     model.add(Dropout(do))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
+    return model.to_json()
+
+def test_cifar10(**args):
+    nb_classes = 10
+    img_rows, img_cols = 32, 32
+    
+    # use 1 kernel size for all convolutional layers
+    ks = args.get('kernel_size', 3)
+    kernel_size = (ks, ks)
+    
+    # tune the number of filters for each convolution layer
+    nb_filters1 = args.get('nb_filters1', 48)
+    nb_filters2 = args.get('nb_filters2', 96)
+    nb_filters3 = args.get('nb_filters3', 192)
+    
+    # tune the pool size once
+    ps = args.get('pool_size', 2)
+    pool_size = (ps,ps)
+    
+    # tune the dropout rates independently
+    do1 = args.get('dropout1', 0.25)
+    do2 = args.get('dropout2', 0.25)
+    do3 = args.get('dropout3', 0.25)
+    do4 = args.get('dropout4', 0.25)
+    do5 = args.get('dropout5', 0.5)
+    
+    # tune the dense layers independently
+    dense1 = args.get('dense1', 512)
+    dense2 = args.get('dense2', 256)
+    
+    if K.image_dim_ordering() == 'th':
+        input_shape = (3, img_rows, img_cols)
+    else:
+        input_shape = (img_rows, img_cols, 3)
+    
+    model = Sequential()
+    model.add(Conv2D(nb_filters1, kernel_size = kernel_size,
+                            padding='same',
+                            input_shape=input_shape))
+    model.add(Activation('relu'))
+    model.add(Conv2D(nb_filters1, kernel_size = kernel_size))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(do1))
+    
+    model.add(Conv2D(nb_filters2, kernel_size = kernel_size, padding='same'))
+    model.add(Activation('relu'))
+    model.add(Conv2D(nb_filters2, kernel_size = kernel_size))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(do2))
+    
+    model.add(Conv2D(nb_filters3, kernel_size = kernel_size, padding='same'))
+    model.add(Activation('relu'))
+    model.add(Conv2D(nb_filters3, kernel_size = kernel_size))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(do3))
+    
+    model.add(Flatten())
+    model.add(Dense(dense1))
+    model.add(Activation('relu'))
+    model.add(Dropout(do4))
+    model.add(Dense(dense2))
+    model.add(Activation('relu'))
+    model.add(Dropout(do5))
+    
+    model.add(Dense(nb_classes, activation='softmax'))
+    
     return model.to_json()
 
 def test_cnn(**args):
