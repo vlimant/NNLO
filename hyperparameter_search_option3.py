@@ -89,6 +89,10 @@ def make_parser():
                         help='Number of process per worker instance')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
+    parser.add_argument('--hyper-opt', dest='hyper_opt', default='bayesian', choices=['bayesian','genetic'],
+                        help='The algorithm to use for the hyper paramater optimization')
+    parser.add_argument('--ga-populations', help='population size for genetic algorithm',
+                        default=10, type=int, dest='population')
     parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
@@ -155,7 +159,7 @@ if __name__ == '__main__':
                                                              Real(0.0, 1.0, name='dropout5')
                                                          ]
         )
-        all_list = glob.glob('/nfshome/quantummind/mpi_opt/cifar10/*.h5')
+        all_list = glob.glob('/bigdata/shared/cifar10/*.h5')
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
@@ -262,7 +266,8 @@ if __name__ == '__main__':
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
-                                                  model_provider.parameters)
+                                                  model_provider.parameters,
+                                                  (args.hyper_opt=='genetic'),args.population)
         if args.previous_state: opt_coordinator.load(args.previous_state)
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
