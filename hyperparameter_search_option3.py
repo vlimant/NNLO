@@ -12,10 +12,9 @@ from mpi4py import MPI
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJsonTF
+from mpi_learn.train.model import ModelFromJsonTF, ModelPytorch
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
-from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
 
@@ -30,6 +29,15 @@ class BuilderFromFunction(object):
         return ModelFromJsonTF(None,
                                json_str=model_json)
 
+class TorchBuilderFromFunction(BuilderFromFunction):
+    def __init__(self, model_fn, parameters):
+        super().__init__(model_fn, parameters)
+
+    def builder(self, *params):
+        args = dict(zip([p.name for p in self.parameters], params))
+        model_pytorch = self.model_fn(**args)
+        return ModelPytorch(None, filename=model_pytorch) 
+        
 import coordinator
 import process_block
 import mpiLAPI as mpi
@@ -78,6 +86,7 @@ def make_parser():
             type=float, default=1.0, dest='elastic_lr')
     parser.add_argument('--elastic-momentum',help='worker SGD momentum for EASGD',
             type=float, default=0, dest='elastic_momentum')
+    
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
@@ -97,6 +106,8 @@ def make_parser():
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
+    parser.add_argument('--torch', action='store_true',
+                        help='Use PyTorch instead of (default) Keras')
     return parser
 
 
@@ -111,18 +122,26 @@ if __name__ == '__main__':
     test = args.example
     if test == 'topclass':
         ### topclass example
-        model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
-                                              parameters = [ Real(0.0, 1.0, name='dropout'),
-                                                             Integer(1,6, name='kernel_size'),
-                                                             Real(1.,10., name = 'llr')
-                                                         ]
-                                          )
+        if not args.torch:
+            model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
+                                                  parameters = [ Real(0.0, 1.0, name='dropout'),
+                                                                 Integer(1,6, name='kernel_size'),
+                                                                 Real(1.,10., name = 'llr')
+                                                             ]
+                                              )
+        else:
+            model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_cnn,
+                                                parameters = [ Integer(1,6, name='conv_layers'),
+                                                               Integer(1,6, name='dense_layers'),
+                                                               Real(0.0,1.0, name='dropout')
+                                                               ]
+                                                )
         if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
         else:
-            train_list = glob.glob('/bigdata/shared/LCDJets_Remake/train/04*.h5')
-            val_list = glob.glob('/bigdata/shared/LCDJets_Remake/val/020*.h5')
+            train_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/train/04*.h5')
+            val_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/val/020*.h5')
         features_name='Images'
         labels_name='Labels'
     elif test == 'mnist':
@@ -208,23 +227,30 @@ if __name__ == '__main__':
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
     backend = 'tensorflow'
-    import keras.backend as K
     hide_device = True
     if hide_device:
         os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
         print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'])
-    gpu_options=K.tf.GPUOptions(
-        per_process_gpu_memory_fraction=0.1,
-        allow_growth = True,
-        visible_device_list = device[-1] if 'gpu' in device else '')
-    if hide_device:
+
+    if not args.torch:
+        import keras.backend as K
         gpu_options=K.tf.GPUOptions(
-                            per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)        
-    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-        allow_soft_placement=True, log_device_placement=False,
-        gpu_options=gpu_options
-    ) ) )    
+            per_process_gpu_memory_fraction=0.1,
+            allow_growth = True,
+            visible_device_list = device[-1] if 'gpu' in device else '')
+        if hide_device:
+            gpu_options=K.tf.GPUOptions(
+                per_process_gpu_memory_fraction=0.0,
+                allow_growth = True,)        
+        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=False,
+            gpu_options=gpu_options
+        ) ) )
+    else:
+        import torch
+        if 'gpu' in device and not hide_device:
+            torch.cuda.set_device(int(device[-1]))
+        
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
     print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
@@ -232,10 +258,6 @@ if __name__ == '__main__':
                                                                                               block_num,
                                                                                               comm_block.Get_rank()
                                                                                             ))
-    ## you need to sync every one up here
-    #all_block_nums = comm_world.allgather( block_num )
-    #print ("we gathered all these blocks {}".format( all_block_nums ))
-
     if args.n_process>1:
         t_b_processes= []
         if block_num !=0:
@@ -250,7 +272,6 @@ if __name__ == '__main__':
                 for p in pr:
                     t_pr.append( translate[p])
                 t_b_processes.append( t_pr )
-            #print ("translate process ranks from ",b_processes,"to",t_b_processes)
         
         #need to collect all the processes lists
         all_t_b_processes = comm_world.allgather( t_b_processes )
@@ -262,7 +283,7 @@ if __name__ == '__main__':
         if block_num == 0:
             print ("all collect processes",w_processes)
             ## now you have the ranks that needs to be initialized in rings.
-        
+
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
