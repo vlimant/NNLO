@@ -55,7 +55,7 @@ def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
 
-    parser.add_argument('--batch', help='batch size', default=100, type=int)
+    parser.add_argument('--batch', help='batch size', default=128, type=int)
     parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
     parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
     parser.add_argument('--loss',help='loss function',default='binary_crossentropy')
@@ -89,10 +89,14 @@ def make_parser():
                         help='Number of process per worker instance')
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
+    parser.add_argument('--hyper-opt', dest='hyper_opt', default='bayesian', choices=['bayesian','genetic'],
+                        help='The algorithm to use for the hyper paramater optimization')
+    parser.add_argument('--ga-populations', help='population size for genetic algorithm',
+                        default=10, type=int, dest='population')
     parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
-    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan'])
+    parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
     return parser
 
 
@@ -140,7 +144,27 @@ if __name__ == '__main__':
         val_list = all_list[l:]
         features_name='features'
         labels_name='labels'
-
+    elif test == 'cifar10':
+        ### cifar10 example
+        model_provider = BuilderFromFunction( model_fn = mpi.test_cifar10,
+                                              parameters = [ Integer(10,300, name='nb_filters1'),
+                                                             Integer(10,300, name='nb_filters2'),
+                                                             Integer(10,300, name='nb_filters3'),
+                                                             Integer(50,1000, name='dense1'),
+                                                             Integer(50,1000, name='dense2'),
+                                                             Real(0.0, 1.0, name='dropout1'),
+                                                             Real(0.0, 1.0, name='dropout2'),
+                                                             Real(0.0, 1.0, name='dropout3'),
+                                                             Real(0.0, 1.0, name='dropout4'),
+                                                             Real(0.0, 1.0, name='dropout5')
+                                                         ]
+        )
+        all_list = glob.glob('/bigdata/shared/cifar10/*.h5')
+        l = int( len(all_list)*0.70)
+        train_list = all_list[:l]
+        val_list = all_list[l:]
+        features_name='features'
+        labels_name='labels'
     elif test == 'gan':
         ### the gan example
         model_provider = GANBuilder( parameters = [ Integer(50,400, name='latent_size' ),
@@ -242,7 +266,8 @@ if __name__ == '__main__':
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
-                                                  model_provider.parameters)
+                                                  model_provider.parameters,
+                                                  (args.hyper_opt=='genetic'),args.population)
         if args.previous_state: opt_coordinator.load(args.previous_state)
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
@@ -256,8 +281,11 @@ if __name__ == '__main__':
                       features_name=features_name,
                       labels_name=labels_name
         )
+        print('found data')
         data.set_file_names( train_list )
+        print('set file names')
         validate_every = data.count_data()/args.batch 
+        print('validate every')
         print (data.count_data(),"samples to train on")
         if args.easgd:
             algo = Algo(None, loss=args.loss, validate_every=validate_every,
