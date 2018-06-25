@@ -118,6 +118,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     check_sanity(args)
 
+    import socket
+    host = os.environ.get('HOST',os.environ.get('HOSTNAME',socket.gethostname()))
 
     test = args.example
     if test == 'topclass':
@@ -136,9 +138,12 @@ if __name__ == '__main__':
                                                                Real(0.0,1.0, name='dropout')
                                                                ]
                                                 )
-        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
+        if 'daint' in host:
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
+        elif 'titan' in host:
+            train_list = glob.glob('/ccs/proj/csc291/DATA/LCDJets_Abstract_IsoLep_lt_20/train/*.h5')
+            val_list = glob.glob('/ccs/proj/csc291/DATA/LCDJets_Abstract_IsoLep_lt_20/val/*.h5')
         else:
             train_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/train/04*.h5')
             val_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/val/020*.h5')
@@ -154,8 +159,10 @@ if __name__ == '__main__':
                                                              Real(0.0, 1.0, name='dropout')
                                                          ]
         )
-        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
+        if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
+        elif 'titan' in host:
+            all_list = glob.glob('/ccs/proj/csc291/DATA/mnist/*.h5')
         else:
             all_list = glob.glob('/bigdata/shared/mnist/*.h5')
         l = int( len(all_list)*0.70)
@@ -178,7 +185,12 @@ if __name__ == '__main__':
                                                              Real(0.0, 1.0, name='dropout5')
                                                          ]
         )
-        all_list = glob.glob('/bigdata/shared/cifar10/*.h5')
+        if 'daint' in host:
+            all_list = []
+        elif 'titan' in host:
+            all_list = glob.glob('/ccs/proj/csc291/DATA/cifar10/*.h5')
+        else:
+            all_list = glob.glob('/bigdata/shared/cifar10/*.h5')
         l = int( len(all_list)*0.70)
         train_list = all_list[:l]
         val_list = all_list[l:]
@@ -196,8 +208,10 @@ if __name__ == '__main__':
         ## only this mode functions
         args.easgd = True
         args.worker_optimizer = 'rmsprop'
-        if 'daint' in os.environ.get('HOST','') or 'daint' in os.environ.get('HOSTNAME',''):
+        if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/3DGAN/*.h5')
+        elif 'titan' in host:
+            all_list = glob.glob('/ccs/proj/csc291/DATA/3DGAN/*.h5')
         else:
             all_list = glob.glob('/data/shared/3DGAN/*.h5')
 
