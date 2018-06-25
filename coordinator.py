@@ -91,8 +91,6 @@ class Coordinator(object):
                 self.ends_cycle = True
 
     def tell(self, params, result, step):
-        print('************TOLD************')
-        print(params, result)
         self.to_tell.append( (params, result) )
         tell_right_away = False
         if tell_right_away:
