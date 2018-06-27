@@ -30,13 +30,14 @@ class BuilderFromFunction(object):
                                json_str=model_json)
 
 class TorchBuilderFromFunction(BuilderFromFunction):
-    def __init__(self, model_fn, parameters):
+    def __init__(self, model_fn, parameters, gpus=0):
         super().__init__(model_fn, parameters)
+        self.gpus = gpus
 
     def builder(self, *params):
         args = dict(zip([p.name for p in self.parameters], params))
         model_pytorch = self.model_fn(**args)
-        return ModelPytorch(None, filename=model_pytorch) 
+        return ModelPytorch(None, filename=model_pytorch, gpus=self.gpus) 
         
 import coordinator
 import process_block
@@ -264,7 +265,9 @@ if __name__ == '__main__':
         import torch
         if 'gpu' in device and not hide_device:
             torch.cuda.set_device(int(device[-1]))
-        
+        if 'gpu' in device:
+            model_provider.gpus=1
+            
     print("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
     print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
