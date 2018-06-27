@@ -274,6 +274,7 @@ def test_pytorch_cnn(conv_layers=2, dense_layers=2, dropout=0.5, classes=3, in_c
     import torch
     pytorch_cnn = CNN(conv_layers=conv_layers, dense_layers=dense_layers, dropout=dropout, classes=classes, in_channels=in_channels)
     username = os.environ.get('USER')
+    os.system('mkdir -p /tmp/{}'.format( username ))
     PATH = "/tmp/{}/test_{}_pytorch_cnn_{}_{}_{}.torch".format(username,os.getpid(),conv_layers,dense_layers,dropout) # To be determined where is the best location to save it
     os.system('rm -f %s'%PATH)
     torch.save(pytorch_cnn, PATH) 
