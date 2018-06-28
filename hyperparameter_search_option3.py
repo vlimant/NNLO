@@ -63,6 +63,7 @@ def check_sanity(args):
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--monitor',help='Monitor cpu and gpu utilization', action='store_true')
     parser.add_argument('--label',default='hOpt')
     parser.add_argument('--batch', help='batch size', default=128, type=int)
     parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
@@ -152,14 +153,24 @@ if __name__ == '__main__':
         labels_name='Labels'
     elif test == 'mnist':
         ### mnist example
-        model_provider = BuilderFromFunction( model_fn = mpi.test_mnist,
+        if args.torch:
+            model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_mnist,
+                                                       parameters = [ Integer(10,50, name='nb_filters'),
+                                                                      Integer(2,10, name='pool_size'),
+                                                                      Integer(2,10, name='kernel_size'),
+                                                                      Integer(50,200, name='dense'),
+                                                                      Real(0.0, 1.0, name='dropout')
+                                                         ]
+                                                       )
+        else:
+            model_provider = BuilderFromFunction( model_fn = mpi.test_mnist,
                                               parameters = [ Integer(10,50, name='nb_filters'),
                                                              Integer(2,10, name='pool_size'),
                                                              Integer(2,10, name='kernel_size'),
                                                              Integer(50,200, name='dense'),
                                                              Real(0.0, 1.0, name='dropout')
                                                          ]
-        )
+            )
         if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
         elif 'titan' in host:
@@ -352,6 +363,7 @@ if __name__ == '__main__':
                                            num_process = args.n_process,
                                            verbose=args.verbose,
                                            early_stopping=args.early_stopping,
-                                           target_metric=args.target_metric)
+                                           target_metric=args.target_metric,
+                                           monitor=args.monitor)
         block.label = args.label
         block.run()

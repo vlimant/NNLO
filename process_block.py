@@ -31,7 +31,8 @@ class ProcessBlock(object):
                  num_process=1,
                  verbose=False,
                  early_stopping=None,
-                 target_metric=None):
+                 target_metric=None,
+                 monitor=False):
         print("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
@@ -49,6 +50,7 @@ class ProcessBlock(object):
         self.last_params = None
         self.early_stopping=early_stopping
         self.target_metric=target_metric
+        self.monitor = monitor
         self.label = None
         
     def ranks(self):
@@ -90,7 +92,8 @@ class ProcessBlock(object):
                                           num_process=self.num_process,
                                           verbose=self.verbose,
                                           early_stopping=self.early_stopping,
-                                          target_metric=self.target_metric)
+                                          target_metric=self.target_metric,
+                                          monitor=self.monitor)
             manager.train()
             fom = manager.figure_of_merit()
             manager.manager.process.record_details(
