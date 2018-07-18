@@ -192,9 +192,9 @@ if __name__ == '__main__':
                                                              Integer(50,1000, name='dense2'),
                                                              Real(0.0, 1.0, name='dropout1'),
                                                              Real(0.0, 1.0, name='dropout2'),
-                                                             Real(0.0, 1.0, name='dropout3'),
-                                                             Real(0.0, 1.0, name='dropout4'),
-                                                             Real(0.0, 1.0, name='dropout5')
+                                                             #Real(0.0, 1.0, name='dropout3'),
+                                                             #Real(0.0, 1.0, name='dropout4'),
+                                                             #Real(0.0, 1.0, name='dropout5')
                                                          ]
         )
         if 'daint' in host:
