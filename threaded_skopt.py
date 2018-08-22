@@ -11,12 +11,15 @@ class externalfunc:
         self.call = prog
         self.N = names
         
-    def __call__(self, X):
+    def __call__(self, X, folds):
         self.args = dict(zip(self.N,X))
         h = hashlib.md5(str(self.args)).hexdigest()
         com = '%s %s'% (self.call, ' '.join(['--%s %s'%(k,v) for (k,v) in self.args.items() ]))
         com += ' --hash %s'%h
+        if folds: com +=' --folds %s'%folds
         com += ' > %s.log'%h
+        #node = random.choice(['culture-plate-sm','imperium-sm','flere-imsaho-sm'])
+        #com = 'ssh %s  '%node + com
         print "Executing: ",com
         ## run the command
         c = os.system( com )
@@ -31,28 +34,29 @@ class externalfunc:
         
 class worker(Thread):
     def __init__(self,
-                 #N,
                  X,
-                 func):
+                 func,
+                 folds=1):
         Thread.__init__(self)
         self.X = X
         self.used = False
         self.func = func
+        self.folds = folds
         
     def run(self):
-        self.Y = self.func(self.X)
+        self.Y = self.func(self.X, self.folds)
         
 class manager:
     def __init__(self, n, skobj,
-                 iterations, func, wait=10):
+                 iterations, func, wait=10, folds = 1):
         self.n = n ## number of parallel processes
         self.sk = skobj ## the skoptimizer you created
         self.iterations = iterations
+        self.folds = folds
         self.wait = wait
         self.func = func
         
     def run(self):
-
         ## first collect all possible existing results
         for eh  in  glob.glob('*.json'):
             try:
@@ -104,7 +108,8 @@ class manager:
                 print "Starting a thread with",par,"%d/%d"%(it,self.iterations)
                 workers.append( worker(
                     X=par ,
-                    func=self.func ))
+                    func=self.func,
+                    folds = self.folds ))
                 workers[-1].start()
                 time.sleep(self.wait) ## do not start all at the same exact time
             else:
@@ -113,10 +118,18 @@ class manager:
                     #print n_on,"still running"
                     pass
                 time.sleep(self.wait)
+def dummy_func_folded( X, folds=1):
+    r = []
+    for f in range( folds ):
+        r.append( dummy_func( X, fold = f) )
 
-def dummy_func( X ):
+    import numpy as np
+    return np.mean( r )
+
+def dummy_func( X , fold = None):
     import random
-    #print "Providing a simple square as backup"
+    print "Providing a simple square as backup"
+    print "fold",fold
     Y = X[0]**2+X[1]**2 + random.random()*10
     return Y
                 
@@ -128,9 +141,9 @@ if __name__ == "__main__":
     from skopt import gp_minimize
 
     import sys
-    
-    n_par = 2
 
+    folds = 1
+    n_par = 2
     externalize = externalfunc(prog='python run_train_ex.py',
                                names = ['par%s'%d for d in range(n_par)])
     
@@ -140,7 +153,7 @@ if __name__ == "__main__":
     if len(sys.argv)>1:
         do = sys.argv[1]
         if do=='threaded':
-            use_func = dummy_func
+            use_func = dummy_func_folded
         elif do=='external':
             use_func = externalize
 
@@ -148,7 +161,7 @@ if __name__ == "__main__":
     dim = [Real(-20, 20) for i in range(n_par)]
     start = time.mktime(time.gmtime())
     res = gp_minimize(
-        func=use_func,
+        func=lambda X : use_func(X, folds),
         dimensions=dim,
         n_calls = run_for,
         
@@ -174,7 +187,8 @@ if __name__ == "__main__":
                 skobj = o,
                 iterations = run_for,
                 func = use_func,
-                wait= 0
+                wait= 0,
+                folds = folds
     )
     start = time.mktime(time.gmtime())
     m.run()
