@@ -30,7 +30,7 @@ class BuilderFromFunction(object):
     def _args(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
         return args
-    
+
     def _json(self,*params):
         m = self.model_fn( **self._args(*params))
         return m.to_json()
@@ -52,7 +52,6 @@ class BuilderFromFunctionJ(BuilderFromFunction):
     def _json(self,*params):
         return self.model_fn( **self._args(*params))
 
-        
 class TorchBuilderFromFunction(BuilderFromFunction):
     def __init__(self, model_fn, parameters=None, gpus=0):
         super().__init__(model_fn, parameters)
@@ -193,6 +192,7 @@ if __name__ == '__main__':
             model_provider = TorchBuilderFromFunction( model_fn = models.make_mnist_torch_model)
         else:
             model_provider = BuilderFromFunction( model_fn = models.make_mnist_model)
+
         if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
         elif 'titan' in host:
