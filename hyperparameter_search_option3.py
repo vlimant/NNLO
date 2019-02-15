@@ -23,16 +23,32 @@ class BuilderFromFunction(object):
         self.model_fn = model_fn
         self.parameters = parameters
 
-    def builder(self,*params):
+    def _args(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
+        return args
+    
+    def _json(self,*params):
+        m = self.model_fn( **self._args(*params))
+        return m.to_json()
+    
+    def builder(self,*params):
         try:
-            model_json = self.model_fn( **args )
-            return ModelFromJsonTF(None, json_str=model_json)
+            return ModelFromJsonTF(None,
+                                   json_str=self._json(*params))
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
             print("Failed to build model with params: {}".format(str_param))
             return None
+        
+    
+class BuilderFromFunctionJ(BuilderFromFunction):
+    def __init__(self, model_fn, parameters):
+        BuilderFromFunction.__init__(self, model_fn, parameters)
+        
+    def _json(self,*params):
+        return self.model_fn( **self._args(*params))
 
+        
 class TorchBuilderFromFunction(BuilderFromFunction):
     def __init__(self, model_fn, parameters, gpus=0):
         super().__init__(model_fn, parameters)
@@ -50,7 +66,15 @@ class TorchBuilderFromFunction(BuilderFromFunction):
         
 import coordinator
 import process_block
-import mpiLAPI as mpi
+try:
+    ## first try to get from mpi_learn
+    import models.Models as models
+except:
+    print ("failed to load mpi_learn")
+
+## where the models were defined before
+#import mpiLAPI as mpi 
+
 
 def get_block_num(comm, block_size):
     """
@@ -136,14 +160,16 @@ if __name__ == '__main__':
     if test == 'topclass':
         ### topclass example
         if not args.torch:
-            model_provider = BuilderFromFunction( model_fn = mpi.test_cnn,
+            #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_cnn,
+            model_provider = BuilderFromFunction( model_fn = models.make_topclass_model,
                                                   parameters = [ Real(0.0, 1.0, name='dropout'),
                                                                  Integer(1,6, name='kernel_size'),
                                                                  Real(1.,10., name = 'llr')
                                                              ]
                                               )
         else:
-            model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_cnn,
+            #model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_cnn,
+            model_provider = TorchBuilderFromFunction( model_fn = models.make_topclass_torch_model,
                                                 parameters = [ Integer(1,6, name='conv_layers'),
                                                                Integer(1,6, name='dense_layers'),
                                                                Real(0.0,1.0, name='dropout')
@@ -163,7 +189,8 @@ if __name__ == '__main__':
     elif test == 'mnist':
         ### mnist example
         if args.torch:
-            model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_mnist,
+            #model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_mnist,
+            model_provider = TorchBuilderFromFunction( model_fn = models.make_mnist_torch_model,
                                                        parameters = [ Integer(10,50, name='nb_filters'),
                                                                       Integer(2,10, name='pool_size'),
                                                                       Integer(2,10, name='kernel_size'),
@@ -172,7 +199,8 @@ if __name__ == '__main__':
                                                          ]
                                                        )
         else:
-            model_provider = BuilderFromFunction( model_fn = mpi.test_mnist,
+            #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_mnist,
+            model_provider = BuilderFromFunction( model_fn = models.make_mnist_model,
                                               parameters = [ Integer(10,50, name='nb_filters'),
                                                              Integer(2,10, name='pool_size'),
                                                              Integer(2,10, name='kernel_size'),
@@ -193,7 +221,8 @@ if __name__ == '__main__':
         labels_name='labels'
     elif test == 'cifar10':
         ### cifar10 example
-        model_provider = BuilderFromFunction( model_fn = mpi.test_cifar10,
+        #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_cifar10,
+        model_provider = BuilderFromFunction( model_fn = models.make_cifar10_model,
                                               parameters = [ Integer(10,300, name='nb_filters1'),
                                                              Integer(10,300, name='nb_filters2'),
                                                              Integer(10,300, name='nb_filters3'),
