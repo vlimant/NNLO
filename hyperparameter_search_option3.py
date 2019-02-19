@@ -25,9 +25,13 @@ class BuilderFromFunction(object):
 
     def builder(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
-        model_json = self.model_fn( **args )
-        return ModelFromJsonTF(None,
-                               json_str=model_json)
+        try:
+            model_json = self.model_fn( **args )
+            return ModelFromJsonTF(None, json_str=model_json)
+        except:
+            str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
+            print("Failed to build model with params: {}".format(str_param))
+            return None
 
 class TorchBuilderFromFunction(BuilderFromFunction):
     def __init__(self, model_fn, parameters, gpus=0):
@@ -36,8 +40,13 @@ class TorchBuilderFromFunction(BuilderFromFunction):
 
     def builder(self, *params):
         args = dict(zip([p.name for p in self.parameters], params))
-        model_pytorch = self.model_fn(**args)
-        return ModelPytorch(None, filename=model_pytorch, gpus=self.gpus) 
+        try:
+            model_pytorch = self.model_fn(**args)
+            return ModelPytorch(None, filename=model_pytorch, gpus=self.gpus)
+        except:
+            str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
+            print("Failed to build model with params: {}".format(str_param))
+            return None
         
 import coordinator
 import process_block
