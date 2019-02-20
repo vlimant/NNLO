@@ -8,6 +8,7 @@ import time
 import glob
 import socket
 from mpi4py import MPI
+import hashlib
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
@@ -19,9 +20,12 @@ from mpi_learn.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
 
 class BuilderFromFunction(object):
-    def __init__(self, model_fn, parameters):
+    def __init__(self, model_fn, parameters=None):
         self.model_fn = model_fn
-        self.parameters = parameters
+        if parameters is None:
+            self.parameters = model_fn.parameter_range
+        else:
+            self.parameters = parameters
 
     def _args(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
@@ -42,7 +46,7 @@ class BuilderFromFunction(object):
         
     
 class BuilderFromFunctionJ(BuilderFromFunction):
-    def __init__(self, model_fn, parameters):
+    def __init__(self, model_fn, parameters=None):
         BuilderFromFunction.__init__(self, model_fn, parameters)
         
     def _json(self,*params):
@@ -50,7 +54,7 @@ class BuilderFromFunctionJ(BuilderFromFunction):
 
         
 class TorchBuilderFromFunction(BuilderFromFunction):
-    def __init__(self, model_fn, parameters, gpus=0):
+    def __init__(self, model_fn, parameters=None, gpus=0):
         super().__init__(model_fn, parameters)
         self.gpus = gpus
 
@@ -58,12 +62,20 @@ class TorchBuilderFromFunction(BuilderFromFunction):
         args = dict(zip([p.name for p in self.parameters], params))
         try:
             model_pytorch = self.model_fn(**args)
-            return ModelPytorch(None, filename=model_pytorch, gpus=self.gpus)
+            ## save it to a temp file indeed
+            username = os.environ.get('USER')
+            os.system('mkdir -p /tmp/{}'.format( username ))
+            args_s = str(args).encode('utf-8')
+            hashs = hashlib.sha224(args_s).hexdigest()
+            
+            model_path = "/tmp/{}/_{}_{}_pytorch.torch".format(username,os.getpid(),hashs)
+            torch.save(model_pytorch, model_path)
+            return ModelPytorch(None, filename=model_path, gpus=self.gpus)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
             print("Failed to build model with params: {}".format(str_param))
             return None
-        
+
 import coordinator
 import process_block
 try:
@@ -148,7 +160,7 @@ def make_parser():
 
 if __name__ == '__main__':
 
-    print ("I am on",socket.gethostname())
+    print ("Process is on",socket.gethostname())
     parser = make_parser()
     args = parser.parse_args()
     check_sanity(args)
@@ -160,21 +172,10 @@ if __name__ == '__main__':
     if test == 'topclass':
         ### topclass example
         if not args.torch:
-            #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_cnn,
-            model_provider = BuilderFromFunction( model_fn = models.make_topclass_model,
-                                                  parameters = [ Real(0.0, 1.0, name='dropout'),
-                                                                 Integer(1,6, name='kernel_size'),
-                                                                 Real(1.,10., name = 'llr')
-                                                             ]
-                                              )
+            model_provider = BuilderFromFunction( model_fn = models.make_topclass_model )
         else:
-            #model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_cnn,
-            model_provider = TorchBuilderFromFunction( model_fn = models.make_topclass_torch_model,
-                                                parameters = [ Integer(1,6, name='conv_layers'),
-                                                               Integer(1,6, name='dense_layers'),
-                                                               Real(0.0,1.0, name='dropout')
-                                                               ]
-                                                )
+            model_provider = TorchBuilderFromFunction( model_fn = models.make_topclass_torch_model )
+
         if 'daint' in host:
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
             val_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/val/*.h5')
@@ -182,32 +183,16 @@ if __name__ == '__main__':
             train_list = glob.glob('/ccs/proj/csc291/DATA/LCDJets_Abstract_IsoLep_lt_20/train/*.h5')
             val_list = glob.glob('/ccs/proj/csc291/DATA/LCDJets_Abstract_IsoLep_lt_20/val/*.h5')
         else:
-            train_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/train/04*.h5')
-            val_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/val/020*.h5')
+            train_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/train/0*.h5')
+            val_list = glob.glob('/bigdata/shared/LCDJets_Abstract_IsoLep_lt_20/val/0*.h5')
         features_name='Images'
         labels_name='Labels'
     elif test == 'mnist':
         ### mnist example
         if args.torch:
-            #model_provider = TorchBuilderFromFunction( model_fn = mpi.test_pytorch_mnist,
-            model_provider = TorchBuilderFromFunction( model_fn = models.make_mnist_torch_model,
-                                                       parameters = [ Integer(10,50, name='nb_filters'),
-                                                                      Integer(2,10, name='pool_size'),
-                                                                      Integer(2,10, name='kernel_size'),
-                                                                      Integer(50,200, name='dense'),
-                                                                      Real(0.0, 1.0, name='dropout')
-                                                         ]
-                                                       )
+            model_provider = TorchBuilderFromFunction( model_fn = models.make_mnist_torch_model)
         else:
-            #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_mnist,
-            model_provider = BuilderFromFunction( model_fn = models.make_mnist_model,
-                                              parameters = [ Integer(10,50, name='nb_filters'),
-                                                             Integer(2,10, name='pool_size'),
-                                                             Integer(2,10, name='kernel_size'),
-                                                             Integer(50,200, name='dense'),
-                                                             Real(0.0, 1.0, name='dropout')
-                                                         ]
-            )
+            model_provider = BuilderFromFunction( model_fn = models.make_mnist_model)
         if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
         elif 'titan' in host:
@@ -221,20 +206,8 @@ if __name__ == '__main__':
         labels_name='labels'
     elif test == 'cifar10':
         ### cifar10 example
-        #model_provider = BuilderFromFunctionJ( model_fn = mpi.test_cifar10,
-        model_provider = BuilderFromFunction( model_fn = models.make_cifar10_model,
-                                              parameters = [ Integer(10,300, name='nb_filters1'),
-                                                             Integer(10,300, name='nb_filters2'),
-                                                             Integer(10,300, name='nb_filters3'),
-                                                             Integer(50,1000, name='dense1'),
-                                                             Integer(50,1000, name='dense2'),
-                                                             Real(0.0, 1.0, name='dropout1'),
-                                                             Real(0.0, 1.0, name='dropout2'),
-                                                             #Real(0.0, 1.0, name='dropout3'),
-                                                             #Real(0.0, 1.0, name='dropout4'),
-                                                             #Real(0.0, 1.0, name='dropout5')
-                                                         ]
-        )
+        model_provider = BuilderFromFunction( model_fn = models.make_cifar10_model )
+
         if 'daint' in host:
             all_list = []
         elif 'titan' in host:
