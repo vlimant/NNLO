@@ -52,6 +52,7 @@ class ProcessBlock(object):
         self.target_metric=target_metric
         self.monitor = monitor
         self.label = None
+        self.current_builder = None
         
     def ranks(self):
         return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
@@ -70,10 +71,16 @@ class ProcessBlock(object):
             if model_builder:
                 model_builder.comm = self.comm_block
                 model_builder.device = model_builder.get_device_name(self.device)
-            return model_builder
-        return None
+                self.current_builder = model_builder
+            else:
+                self.current_builder = None
+            return True
+        return False
 
-    def train_model(self, model_builder):
+    def train_model(self):
+        if self.current_builder is None:
+            # Invalid model, return nonsense FoM
+            return np.nan
         fake_train = False
         if fake_train:
             if self.comm_block.Get_rank() == 0:
@@ -86,7 +93,7 @@ class ProcessBlock(object):
             ## need to reset this part to avoid cached values
             self.algo.reset()
             manager = mm.MPIKFoldManager( self.folds,
-                                          self.comm_block, self.data, self.algo, model_builder,
+                                          self.comm_block, self.data, self.algo, self.current_builder,
                                           self.epochs, self.train_list, self.val_list,
                                           num_masters=self.num_masters,
                                           num_process=self.num_process,
@@ -119,13 +126,13 @@ class ProcessBlock(object):
         while True:
             self.comm_block.Barrier()
             print("{} waiting for model".format(self.ranks()))
-            cur_builder = self.wait_for_model()
-            if cur_builder == None:
+            have_builder = self.wait_for_model()
+            if not have_builder:
                 print("{} received exit signal from coordinator".format(self.ranks()))
                 break
             
             print("{} will train model".format(self.ranks()))
-            fom = self.train_model(cur_builder)
+            fom = self.train_model()
             print("{} will send result if needed".format(self.ranks()))
             self.send_result(fom)
         self.comm_world.Barrier()

@@ -5,6 +5,7 @@ import os
 import pickle
 import time
 import hashlib
+import numpy as np
 from genetic_algorithm import GA
 from tag_lookup import tag_lookup
 
@@ -174,10 +175,13 @@ class Coordinator(object):
             done, result = self.req_dict[block_num].test()
             if done:
                 params = self.block_dict.pop(block_num)
-                self.param_list.append(params)
-                self.fom_list.append(result)
-                print("Telling {} at {}".format(result, params))
-                self.tell( params, result, step )
+                if np.isnan(result):
+                    print("Skipped telling due to invalid model params {}".format(params))
+                else:
+                    self.param_list.append(params)
+                    self.fom_list.append(result)
+                    print("Telling {} at {}".format(result, params))
+                    self.tell( params, result, step )
                 del self.req_dict[block_num]
                 return True
             return False
