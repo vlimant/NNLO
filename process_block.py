@@ -53,7 +53,6 @@ class ProcessBlock(object):
         self.monitor = monitor
         self.label = None
         self.current_builder = None
-        self.invalid_model_fom = 100000.
         
     def ranks(self):
         return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
@@ -81,7 +80,7 @@ class ProcessBlock(object):
     def train_model(self):
         if self.current_builder is None:
             # Invalid model, return nonsense FoM
-            return self.invalid_model_fom
+            return np.nan
         fake_train = False
         if fake_train:
             if self.comm_block.Get_rank() == 0:
