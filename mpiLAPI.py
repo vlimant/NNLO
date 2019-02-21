@@ -136,132 +136,19 @@ class mpi_learn_api:
             return Popen(com, shell=True)
 
 def test_mnist(**args):
-    """MNIST ConvNet from keras/examples/mnist_cnn.py"""
-    nb_classes = 10
-    # input image dimensions
-    img_rows, img_cols = 28, 28
-    # number of convolutional filters to use
-    nb_filters = args.get('nb_filters',32)
-    # size of pooling area for max pooling
-    ps = args.get('pool_size',2)
-    pool_size = (ps,ps)
-    # convolution kernel size
-    ks = args.get('kernel_size',3)
-    kernel_size = (ks, ks)
-    do = args.get('dropout', 0.25)
-    dense = args.get('dense', 128)
-    if K.image_dim_ordering() == 'th':
-        input_shape = (1, img_rows, img_cols)
-    else:
-        input_shape = (img_rows, img_cols, 1)
-    model = Sequential()
-    #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1],
-    ## suggested Conv2D(23, padding="valid", kernel_size=(2, 2), input_shape=(28, 28, 1...)`
-    model.add(Conv2D(nb_filters, kernel_size = kernel_size,
-                     #order_mode='valid',
-                     padding="valid",
-                     input_shape=input_shape))
-    model.add(Activation('relu'))
-    #model.add(Conv2D(nb_filters, kernel_size[0], kernel_size[1]))
-    model.add(Conv2D(nb_filters, kernel_size = kernel_size))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=pool_size))
-    model.add(Dropout(do))
-    model.add(Flatten())
-    model.add(Dense(dense))
-    model.add(Activation('relu'))
-    model.add(Dropout(do))
-    model.add(Dense(nb_classes))
-    model.add(Activation('softmax'))
+    model = models.make_mnist_model(**args)
     return model.to_json()
 
 def test_cifar10(**args):
-    nb_classes = 10
-    img_rows, img_cols = 32, 32
-    
-    # use 1 kernel size for all convolutional layers
-    ks = args.get('kernel_size', 3)
-    kernel_size = (ks, ks)
-    
-    # tune the number of filters for each convolution layer
-    nb_filters1 = args.get('nb_filters1', 48)
-    nb_filters2 = args.get('nb_filters2', 96)
-    nb_filters3 = args.get('nb_filters3', 192)
-    
-    # tune the pool size once
-    ps = args.get('pool_size', 2)
-    pool_size = (ps,ps)
-    
-    # tune the dropout rates independently
-    do1 = args.get('dropout1', 0.25)
-    do2 = args.get('dropout2', 0.25)
-    do3 = args.get('dropout3', 0.25)
-    do4 = args.get('dropout4', 0.25)
-    do5 = args.get('dropout5', 0.5)
-    
-    # tune the dense layers independently
-    dense1 = args.get('dense1', 512)
-    dense2 = args.get('dense2', 256)
-    
-    if K.image_dim_ordering() == 'th':
-        input_shape = (3, img_rows, img_cols)
-    else:
-        input_shape = (img_rows, img_cols, 3)
-    
-    model = Sequential()
-    model.add(Conv2D(nb_filters1, kernel_size = kernel_size,
-                            padding='same',
-                            input_shape=input_shape))
-    model.add(Activation('relu'))
-    model.add(Conv2D(nb_filters1, kernel_size = kernel_size))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=pool_size))
-    model.add(Dropout(do1))
-    
-    model.add(Conv2D(nb_filters2, kernel_size = kernel_size, padding='same'))
-    model.add(Activation('relu'))
-    model.add(Conv2D(nb_filters2, kernel_size = kernel_size))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=pool_size))
-    model.add(Dropout(do2))
-    
-    model.add(Conv2D(nb_filters3, kernel_size = kernel_size, padding='same'))
-    model.add(Activation('relu'))
-    model.add(Conv2D(nb_filters3, kernel_size = kernel_size))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=pool_size))
-    model.add(Dropout(do3))
-    
-    model.add(Flatten())
-    model.add(Dense(dense1))
-    model.add(Activation('relu'))
-    model.add(Dropout(do4))
-    model.add(Dense(dense2))
-    model.add(Activation('relu'))
-    model.add(Dropout(do5))
-    
-    model.add(Dense(nb_classes, activation='softmax'))
-    
+    model = models.make_cifar10_model(**args)
+    return model.to_json()
+
+def test_topclass(**args):
+    model = models.make_topclass_model(**args)
     return model.to_json()
 
 def test_cnn(**args):
-    dropout= args.get('dropout',0.5)
-    kernel_size = args.get('kernel_size',3)
-    lr = args.get('lr', np.exp(-args.get('llr',np.log(1./1e-3))))
-    model = Sequential()
-
-    model.add(Conv2D(32, kernel_size=(kernel_size, kernel_size), strides=3, activation='relu', input_shape=(150,94,5)))
-    model.add(Conv2D(32, kernel_size=(kernel_size,kernel_size), strides=3, activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
-    model.add(Dropout(dropout/2))
-
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(dropout))
-    model.add(Dense(3, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer = Adam(lr))
-    
-    return model.to_json()
+    return test_topclass(**args)
 
 def test_densenet(nb_classes = 3, img_dim = (150, 94, 5), depth = 10, nb_dense_block = 3, growth_rate = 12, dropout_rate= 0.00, nb_filter = 16, lr = 1e-3):
     densenet = DenseNet(nb_classes = nb_classes, img_dim = img_dim, depth = depth, nb_dense_block = nb_dense_block, growth_rate = growth_rate, dropout_rate = dropout_rate, nb_filter = nb_filter)
