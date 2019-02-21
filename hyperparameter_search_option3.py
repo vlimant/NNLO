@@ -40,7 +40,7 @@ class BuilderFromFunction(object):
             return ModelFromJsonTF(None,
                                    json_str=self._json(*params))
         except:
-            str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
+            str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in self._args(*params).items())
             print("Failed to build model with params: {}".format(str_param))
             return None
         
