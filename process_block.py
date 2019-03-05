@@ -32,7 +32,8 @@ class ProcessBlock(object):
                  verbose=False,
                  early_stopping=None,
                  target_metric=None,
-                 monitor=False):
+                 monitor=False,
+                 checkpoint_interval=5):
         print("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
@@ -53,6 +54,8 @@ class ProcessBlock(object):
         self.monitor = monitor
         self.label = None
         self.current_builder = None
+        self.restore = False
+        self.checkpoint_interval = checkpoint_interval
         
     def ranks(self):
         return "Process {}, sub-process {}".format( self.comm_world.Get_rank(), self.comm_block.Get_rank() )
@@ -90,8 +93,20 @@ class ProcessBlock(object):
                     return result
         else:
             print("{} creating MPIManager".format(self.ranks()))
+            history_name = '{}-block-{}'.format(self.label if self.label else "",
+                                                             hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest())
             ## need to reset this part to avoid cached values
             self.algo.reset()
+            if self.restore:
+                if os.path.isfile(history_name + '.latest'):
+                    with open(history_name + '.latest', 'r') as latest:
+                        restore_name = latest.read().splitlines()[-1]
+                else:
+                    restore_name = history_name
+                if os.path.isfile(restore_name + '.model'):
+                    self.current_builder.weights = restore_name + '.model'
+                self.algo.load(restore_name)
+                self.restore = False
             manager = mm.MPIKFoldManager( self.folds,
                                           self.comm_block, self.data, self.algo, self.current_builder,
                                           self.epochs, self.train_list, self.val_list,
@@ -100,13 +115,12 @@ class ProcessBlock(object):
                                           verbose=self.verbose,
                                           early_stopping=self.early_stopping,
                                           target_metric=self.target_metric,
-                                          monitor=self.monitor)
+                                          monitor=self.monitor,
+                                          checkpoint=history_name, checkpoint_interval=self.checkpoint_interval)
             manager.train()
             fom = manager.figure_of_merit()
             manager.manager.process.record_details(
-                json_name='block-{}-{}-{}-{}-history.json'.format(self.label if self.label else "",
-                                                                  hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest(),
-                                                                  self.comm_world.Get_rank(),os.getpid()),
+                json_name=history_name + '.json',
                 meta={'parameters': list(map(float,self.last_params)),
                                                          'fold' : manager.fold_num})
             manager.free_comms()            
