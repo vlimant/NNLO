@@ -11,7 +11,6 @@ from mpi4py import MPI
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJsonTF
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 

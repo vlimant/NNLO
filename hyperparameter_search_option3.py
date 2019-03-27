@@ -3,17 +3,15 @@
 import sys,os
 import numpy as np
 import argparse
-import json
 import time
 import glob
 import socket
 from mpi4py import MPI
-import hashlib
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJsonTF, ModelPytorch
+from mpi_learn.train.model import ModelTensorFlow, ModelPytorch
 from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 from mpi_learn.train.GanModel import GANBuilder
@@ -30,28 +28,16 @@ class BuilderFromFunction(object):
     def _args(self,*params):
         args = dict(zip([p.name for p in self.parameters],params))
         return args
-
-    def _json(self,*params):
-        m = self.model_fn( **self._args(*params))
-        return m.to_json()
     
     def builder(self,*params):
         try:
-            return ModelFromJsonTF(None,
-                                   json_str=self._json(*params))
+            model = self.model_fn( **self._args(*params))
+            return ModelTensorFlow(None, model=model)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in self._args(*params).items())
             print("Failed to build model with params: {}".format(str_param))
             return None
         
-    
-class BuilderFromFunctionJ(BuilderFromFunction):
-    def __init__(self, model_fn, parameters=None):
-        BuilderFromFunction.__init__(self, model_fn, parameters)
-        
-    def _json(self,*params):
-        return self.model_fn( **self._args(*params))
-
 class TorchBuilderFromFunction(BuilderFromFunction):
     def __init__(self, model_fn, parameters=None, gpus=0):
         super().__init__(model_fn, parameters)
@@ -61,15 +47,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
         args = dict(zip([p.name for p in self.parameters], params))
         try:
             model_pytorch = self.model_fn(**args)
-            ## save it to a temp file indeed
-            username = os.environ.get('USER')
-            os.system('mkdir -p /tmp/{}'.format( username ))
-            args_s = str(args).encode('utf-8')
-            hashs = hashlib.sha224(args_s).hexdigest()
-            
-            model_path = "/tmp/{}/_{}_{}_pytorch.torch".format(username,os.getpid(),hashs)
-            torch.save(model_pytorch, model_path)
-            return ModelPytorch(None, filename=model_path, gpus=self.gpus)
+            return ModelPytorch(None, model=model_pytorch)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
             print("Failed to build model with params: {}".format(str_param))
