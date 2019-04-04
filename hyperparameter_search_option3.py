@@ -32,7 +32,7 @@ class BuilderFromFunction(object):
     def builder(self,*params):
         try:
             model = self.model_fn( **self._args(*params))
-            return ModelTensorFlow(None, model=model)
+            return ModelTensorFlow(None, source=model)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in self._args(*params).items())
             print("Failed to build model with params: {}".format(str_param))
@@ -47,7 +47,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
         args = dict(zip([p.name for p in self.parameters], params))
         try:
             model_pytorch = self.model_fn(**args)
-            return ModelPytorch(None, model=model_pytorch)
+            return ModelPytorch(None, source=model_pytorch)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
             print("Failed to build model with params: {}".format(str_param))
