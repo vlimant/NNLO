@@ -148,7 +148,8 @@ def make_parser():
                         help='The algorithm to use for the hyper paramater optimization')
     parser.add_argument('--ga-populations', help='population size for genetic algorithm',
                         default=10, type=int, dest='population')
-    parser.add_argument('--previous-result', help='Load the optimizer state from a previous run', default=None,dest='previous_state')
+    parser.add_argument('--try-restore', help='Try to resume from saved state', dest='try_restore', action='store_true')
+    parser.add_argument('--checkpoint-interval', help='Number of epochs between checkpoints', default=5, type=int, dest='checkpoint_interval')
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
@@ -328,9 +329,9 @@ if __name__ == '__main__':
         opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters,
                                                   (args.hyper_opt=='genetic'),args.population)
-        if args.previous_state: opt_coordinator.load(args.previous_state)
-        if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.label = args.label
+        if args.try_restore: opt_coordinator.load()
+        if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
         opt_coordinator.record_details()
     else:
@@ -375,6 +376,8 @@ if __name__ == '__main__':
                                            verbose=args.verbose,
                                            early_stopping=args.early_stopping,
                                            target_metric=args.target_metric,
-                                           monitor=args.monitor)
+                                           monitor=args.monitor,
+                                           checkpoint_interval=args.checkpoint_interval)
+        if args.try_restore: block.restore = True
         block.label = args.label
         block.run()

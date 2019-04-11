@@ -54,7 +54,9 @@ class Coordinator(object):
         self.target_fom = None
         self.history = {}
         self.label = None
-        
+
+        self.iter = 1
+
     def ask(self, n_iter):
         if not self.next_params:
             ## don't ask every single time
@@ -66,24 +68,32 @@ class Coordinator(object):
 
     def record_details(self, json_name=None):
         if json_name is None:
-            json_name = 'coordinator-{}-{}.json'.format( self.label, os.getpid())
+            json_name = '{}-coordinator.json'.format(self.label)
         with open(json_name, 'w') as out:
             out.write( json.dumps( self.history, indent=2))
             
     def save(self, fn = None):
         if fn is None:
-            fn = 'coordinator-{}-{}.pkl'.format( self.label, os.getpid())
-        self.history.setdefault('save',fn)
-        d= open(fn,'wb')
-        pickle.dump( self.optimizer, d )
-        d.close()
+            fn = '{}-coordinator.state'.format(self.label)
+        self.history.setdefault('save', fn)
+        with open(fn, 'wb') as state:
+            pickle.dump( self.__dict__, state )
 
-    def load(self, fn= 'coordinator.pkl'):
-        self.history.setdefault('load',fn)
-        d = open(fn, 'rb')
-        print ("loading the coordinator optimizer from",fn)
-        self.optimizer = pickle.load( d )
-        d.close()
+    def load(self, fn=None):
+        if fn is None:
+            fn = '{}-coordinator.state'.format(self.label)
+        if os.path.isfile(fn):
+            self.history.setdefault('load',fn)
+            with open(fn, 'rb') as state:
+                print ("Loading the coordinator from",fn)
+                self_dict = pickle.load(state)
+                self_dict.pop('comm') # Skip MPI objects (they are invalid)
+                self_dict.pop('req_dict')
+                active_params = list(self_dict.pop('block_dict').values())
+                self.__dict__.update(self_dict)
+                self.next_params[:0] = active_params
+        else:
+            print('Failed to load coordinator state from {}, starting from scratch'.format(fn))
 
     def fit(self, step):
         X = [o[0] for o in self.to_tell]
@@ -121,15 +131,16 @@ class Coordinator(object):
         if self.ga:
             self.optimizer.setGenerations(num_iterations)
             loopMax *= self.populationSize
-        for step in range(loopMax):
-            print("Coordinator iteration {}".format(step))
+        for step in range(self.iter, loopMax + 1):
             next_block = self.wait_for_idle_block(step)
+            print("Coordinator iteration {}".format(step))
             if self.ends_cycle:
                 print("Coordinator is skiping the iteration cycle")
                 break
             next_params = self.ask( num_iterations )
             print("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
+            self.save()
 
         ## wait for all running block to finish their processing
         self.close_blocks(step)
@@ -183,6 +194,7 @@ class Coordinator(object):
                     print("Telling {} at {}".format(result, params))
                     self.tell( params, result, step )
                 del self.req_dict[block_num]
+                self.iter += 1
                 return True
             return False
         else:
