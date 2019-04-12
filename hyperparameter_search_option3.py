@@ -131,6 +131,7 @@ def make_parser():
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
+    parser.add_argument('--model', default=None, help='Python file containing model series definition')
     parser.add_argument('--torch', action='store_true',
                         help='Use PyTorch instead of (default) Keras')
     return parser
@@ -147,7 +148,20 @@ if __name__ == '__main__':
     host = os.environ.get('HOST',os.environ.get('HOSTNAME',socket.gethostname()))
 
     test = args.example
-    if test == 'topclass':
+    model_source = args.model
+    if model_source is not None:
+        ## provide the model details here
+        if not args.torch:
+            module = __import__(args.model.replace('.py',''))
+            if not args.torch:
+                model_provider = BuilderFromFunction( model_fn = module.get_model )
+            else:
+                model_provider = TorchBuilderFromFunction( model_fn = module.get_model )
+            train_list = module.get_train()
+            val_list = module.get_val()
+        features_name = module.get_features()
+        labels_name = module.get_labels()
+    elif test == 'topclass':
         ### topclass example
         if not args.torch:
             model_provider = BuilderFromFunction( model_fn = models.make_topclass_model )
