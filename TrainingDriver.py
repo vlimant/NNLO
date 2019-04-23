@@ -95,7 +95,9 @@ if __name__ == '__main__':
         a_backend = 'torch'
         
     m_module = __import__(args.model.replace('.py','')) if '.py' in args.model else None
-        
+    features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
+    labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
+    
     if args.train_data:
         with open(args.train_data) as train_list_file:
             train_list = [ s.strip() for s in train_list_file.readlines() ]
@@ -179,11 +181,11 @@ if __name__ == '__main__':
         if args.profile:
             os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
-
+            
     data = H5Data( batch_size=args.batch,
                    cache = args.caching_dir,
                    preloading = args.data_preload,
-                   features_name=args.features_name, labels_name=args.labels_name )
+                   features_name=features_name, labels_name=labels_name )
     # We initialize the Data object with the training data list
     # so that we can use it to count the number of training examples
     data.set_file_names( train_list )
