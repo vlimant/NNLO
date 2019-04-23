@@ -342,7 +342,7 @@ class StaticBatchNormalization(BatchNormalization):
         return super(StaticBatchNormalization, self).call(inputs, training=False)
 
 class GANModel(MPIModel):
-    def __init__(self, **args):#latent_size=200, checkpoint=True, gen_bn=True, onepass=False):
+    def __init__(self, **args):
         self.tell = args.get('tell',True)
         self.gen_bn = args.get('gen_bn',True)
         self._onepass = args.get('onepass',bool(int(os.environ.get('GANONEPASS',0))))
