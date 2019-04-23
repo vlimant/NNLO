@@ -1,29 +1,29 @@
-# mpi_learn
-Distributed learning with mpi4py
+# Neural Network Learning and Optimization : NNLO
+Distributed learning with mpi
 
 Dependencies: [`OpenMPI`](https://www.open-mpi.org/) and [`mpi4py`](http://mpi4py.readthedocs.io/en/stable/) (v. >= 2.0.0), [`keras`](https://keras.io/) (v. >= 1.2.0)
 
 Test with the MNIST dataset:
 ```
-git clone https://github.com/duanders/mpi_learn.git
-cd mpi_learn
-python BuildModel.py mnist
+git clone https://github.com/vlimant/NNLO.git
+cd NNLO
 python models/get_mnist.py
-mpirun -np 3 ./MPIDriver.py mnist_arch.json train_mnist.list test_mnist.list --loss categorical_crossentropy --epochs 3
+mpirun -np 3 python3 TrainingDriver.py example_mnist.py train_mnist.list test_mnist.list --loss categorical_crossentropy --epochs 3
+mpirun -np 7 python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
 ```
 
-## Using MPIDriver.py to train your model
+## Using TrainingDriver.py to train your model
 
-`MPIDriver.py` will load a keras model of your choice and train it on the input data you provide.  The script has three required arguments:
+`TrainingDriver.py` will load a keras model of your choice and train it on the input data you provide.  The script has three required arguments:
 - Path to JSON file specifying the Keras model (your model can be converted to JSON using the model's `to_json()` method)  
 - File containing a list of training data.  This should be a simple text file with one input data file per line.  By default the script expects data stored in HDF5 format; see below for instructions for handling arbitrary input data.
 - File containing a list of validation data.  This should be a simple text file with one input data file per line.  
 
-See `MPIDriver.py` for supported optional arguments.  Run the script via `mpirun` or `mpiexec`.  It should automatically detect available NVIDIA GPUs and allocate them among the MPI worker processes.
+See `TrainingDriver.py` for supported optional arguments.  Run the script via `mpirun` or `mpiexec`.  It automatically detects available NVIDIA GPUs and allocate them among the MPI worker processes.
 
 ## Customizing the training process
 
-The provided `MPIDriver.py` script handles the case of a model that is specified in JSON format and training data that is stored in HDF5 files. However, the construction of the model and the loading of input data are easily customized.  
+The provided `TrainingDriver.py` script handles the case of a model that is specified in JSON format and training data that is stored in HDF5 files. However, the construction of the model and the loading of input data are easily customized.  
 
 #### Model
 
@@ -60,14 +60,21 @@ Provide an instance of the Algo class when you construct the MPIManager (see bel
 - `validate_every`: number of gradient updates to process before performing validation.  Set to 0 to disable validation.
 - `sync_every`: number of batches for workers to process between gradient updates (default 1)
 
-By default the training is performed using the Downpour SGD algorithm [1].  To instead use Elastic Averaging SGD [2], the following additional settings should be provided:
+##### Downpour SGD
+By default the training is performed using the Downpour SGD algorithm [1].
+
+##### Elastic Averaging SGD
+To instead use Elastic Averaging SGD [2], the following additional settings should be provided:
 - `mode`: specify `'easgd'`
 - `worker_optimizer`: learning algorithm used by individual worker processes
 - `elastic_force`, `elastic_lr`, `elastic_momentum`: force, learning rate, and momentum parameters for the EASGD algorithm
 
+##### Gradient Energy Matching
+The algorithm proposed in https://arxiv.org/abs/1805.08469 is available. DOCUMENTATION TO BE COMPLETED
+
 ### Launching the training process
 
-Training is initiated by an instance of the MPIManager class, which initializes each MPI process as a worker or master and prepares the training procedure.  The MPIManager is constructed using the following ingredients (see MPIDriver.py for example usage):
+Training is initiated by an instance of the MPIManager class, which initializes each MPI process as a worker or master and prepares the training procedure.  The MPIManager is constructed using the following ingredients (see TrainingDriver.py for example usage):
 - `comm`: MPI communicator object, usually `MPI.COMM_WORLD`
 - `data`, `algo`, `model_builder`: instances of the `Data`, `Algo`, and `ModelBuilder` classes (see above).  These three elements determine most of the details of training.
 - `num_epochs`: number of training epochs
@@ -83,6 +90,10 @@ In the default training configuration, one MPI process (process 0) is initialize
 During training, a Worker reads one batch of training data and computes the gradient of the loss function on that batch.  The Worker sends the gradient to the Master, which uses it to update its model weights.  The Master sends the updated model weights to the Worker, which then repeats the process with the next batch of training data.  
 
 ![downpour](docs/downpour.png)
+
+### Hyper-parameter Optimization
+
+FURTHER DOCUMENTATION TO BE ADDED
 
 ### References
 
