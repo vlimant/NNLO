@@ -919,7 +919,7 @@ class MPIMaster(MPIProcess):
                                 current = use[m][-1]
                                 current = None
                     if ref is not None and current is not None and ((ref<current and opp=='<') or (ref>current and opp=='>')):
-                        logger.info("metric %s is over %s patience boundary: %s (ref) %s %s (current) %s", str(m), str(p), str(ref), str(opp), str(current), "with smoothing" if smooth else "")
+                        self.logger.info("metric %s is over %s patience boundary: %s (ref) %s %s (current) %s", str(m), str(p), str(ref), str(opp), str(current), "with smoothing" if smooth else "")
                         self.stop_training = True
                 else:
                     self.logger.error("fatal early stopping cannot get %s", str(m))
