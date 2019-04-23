@@ -6,9 +6,9 @@ import argparse
 import time
 import glob
 import socket
+import logging
 from mpi4py import MPI
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/mpi_learn_src')
 from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
 from mpi_learn.train.model import ModelTensorFlow, ModelPytorch
@@ -16,6 +16,7 @@ from mpi_learn.utils import import_keras
 import mpi_learn.mpi.manager as mm
 from mpi_learn.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
+from mpi_learn.logger import initialize_logger
 
 class BuilderFromFunction(object):
     def __init__(self, model_fn, parameters=None):
@@ -82,65 +83,43 @@ def get_block_num(comm, block_size):
 def check_sanity(args):
     assert args.block_size > 1, "Block size must be at least 2 (master + worker)"
 
-def make_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose', action='store_true')
-    parser.add_argument('--monitor',help='Monitor cpu and gpu utilization', action='store_true')
-    parser.add_argument('--label',default='hOpt')
-    parser.add_argument('--batch', help='batch size', default=128, type=int)
-    parser.add_argument('--epochs', help='number of training epochs', default=10, type=int)
-    parser.add_argument('--optimizer',help='optimizer for master to use',default='adam')
-    parser.add_argument('--loss',help='loss function',default='binary_crossentropy')
-    parser.add_argument('--sync-every', help='how often to sync weights with master', 
-            default=1, type=int, dest='sync_every')
-    parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
-    parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
-    parser.add_argument('--early-stopping', default=None,
-                        dest='early_stopping', help='patience for early stopping')
-    parser.add_argument('--target-metric', default=None,
-                        dest='target_metric', help='Passing configuration for a target metric')
+from TrainingDriver import add_train_options
 
-    ############################
-    ## EASGD block of option
-    parser.add_argument('--easgd',help='use Elastic Averaging SGD',action='store_true')
-    parser.add_argument('--worker-optimizer',help='optimizer for workers to use',
-            dest='worker_optimizer', default='sgd')
-    parser.add_argument('--elastic-force',help='beta parameter for EASGD',type=float,default=0.9)
-    parser.add_argument('--elastic-lr',help='worker SGD learning rate for EASGD',
-            type=float, default=1.0, dest='elastic_lr')
-    parser.add_argument('--elastic-momentum',help='worker SGD momentum for EASGD',
-            type=float, default=0, dest='elastic_momentum')
-    
+def make_opt_parser():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--label', help='A label to give to the coordinator', default='hOpt')
+
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
     parser.add_argument('--n-fold', type=int, default=1, dest='n_fold',
                         help='Number of folds used to estimate the figure of merit')
-    parser.add_argument('--n-master', type=int, default=1, dest='n_master',
-                        help='Number of master per group')
-    parser.add_argument('--n-process', type=int, default=1, dest='n_process',
-                        help='Number of process per worker instance')
+
     parser.add_argument('--num-iterations', type=int, default=10,
                         help='The number of steps in the skopt process')
     parser.add_argument('--hyper-opt', dest='hyper_opt', default='bayesian', choices=['bayesian','genetic'],
                         help='The algorithm to use for the hyper paramater optimization')
     parser.add_argument('--ga-populations', help='population size for genetic algorithm',
                         default=10, type=int, dest='population')
+
     parser.add_argument('--try-restore', help='Try to resume from saved state', dest='try_restore', action='store_true')
-    parser.add_argument('--checkpoint-interval', help='Number of epochs between checkpoints', default=5, type=int, dest='checkpoint_interval')
+
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
+
+    ## opt specific arguments
     parser.add_argument('--example', default='mnist', choices=['topclass','mnist','gan','cifar10'])
-    parser.add_argument('--model', default=None, help='Python file containing model series definition')
-    parser.add_argument('--torch', action='store_true',
-                        help='Use PyTorch instead of (default) Keras')
+
+    add_train_options(parser)
+    
     return parser
 
 
 if __name__ == '__main__':
 
     print ("Process is on",socket.gethostname())
-    parser = make_parser()
+    parser = make_opt_parser()
     args = parser.parse_args()
     check_sanity(args)
 
@@ -149,16 +128,21 @@ if __name__ == '__main__':
 
     test = args.example
     model_source = args.model
+    a_backend = args.backend
+    if 'torch' in args.model:
+        a_backend = 'torch'
+    use_tf = a_backend == 'keras'
+    use_torch = not use_tf
+    
     if model_source is not None:
         ## provide the model details here
-        if not args.torch:
-            module = __import__(args.model.replace('.py',''))
-            if not args.torch:
-                model_provider = BuilderFromFunction( model_fn = module.get_model )
-            else:
-                model_provider = TorchBuilderFromFunction( model_fn = module.get_model )
-            train_list = module.get_train()
-            val_list = module.get_val()
+        module = __import__(args.model.replace('.py',''))
+        if use_tf:
+            model_provider = BuilderFromFunction( model_fn = module.get_model )
+        else:
+            model_provider = TorchBuilderFromFunction( model_fn = module.get_model )
+        train_list = module.get_train()
+        val_list = module.get_val()
         features_name = module.get_features()
         labels_name = module.get_labels()
     elif test == 'topclass':
@@ -222,7 +206,7 @@ if __name__ == '__main__':
                                                 ]
         )
         ## only this mode functions
-        args.easgd = True
+        setattr(args,"mode",'easgd')
         args.worker_optimizer = 'rmsprop'
         if 'daint' in host:
             all_list = glob.glob('/scratch/snx3000/vlimant/data/3DGAN/*.h5')
@@ -239,47 +223,45 @@ if __name__ == '__main__':
         val_list = all_list[-1:]
         features_name='X'
         labels_name='y'
-        
-    print (len(train_list),"train files",len(val_list),"validation files")
-    print("Initializing...")
+
+
+    ##starting the configuration of the processes
+
+    logging.info("Initializing...")
     comm_world = MPI.COMM_WORLD.Dup()
     ## consistency check to make sure everything is appropriate
     num_blocks, left_over = divmod( (comm_world.Get_size()-1), args.block_size)
     if left_over:
-        print ("The last block is going to be made of {} nodes, make inconsistent block size {}".format( left_over,
+        logging.warning("The last block is going to be made of {} nodes, make inconsistent block size {}".format( left_over,
                                                                                                          args.block_size))
         num_blocks += 1 ## to accoun for the last block
         if left_over<2:
-            print ("The last block is going to be too small for mpi_learn, with no workers")
-        sys.exit(1)
+            logging.warning("The last block is going to be too small for mpi_learn, with no workers")
+        MPI.COMM_WORLD.Abort()
 
 
     block_num = get_block_num(comm_world, args.block_size)
     device = mm.get_device(comm_world, num_blocks)
-    backend = 'tensorflow'
-    hide_device = True
-    if hide_device:
-        os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
-        print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'])
 
-    if not args.torch:
+
+    
+    os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+    logging.debug('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
+
+    if use_tf:
         import keras.backend as K
         gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.1,
             allow_growth = True,
             visible_device_list = device[-1] if 'gpu' in device else '')
-        if hide_device:
-            gpu_options=K.tf.GPUOptions(
-                per_process_gpu_memory_fraction=0.0,
-                allow_growth = True,)        
+        gpu_options=K.tf.GPUOptions(
+            per_process_gpu_memory_fraction=0.0,
+            allow_growth = True,)        
         K.set_session( K.tf.Session( config=K.tf.ConfigProto(
             allow_soft_placement=True, log_device_placement=False,
             gpu_options=gpu_options
         ) ) )
     else:
-        import torch
-        if 'gpu' in device and not hide_device:
-            torch.cuda.set_device(int(device[-1]))
         if 'gpu' in device:
             model_provider.gpus=1
             
@@ -290,10 +272,10 @@ if __name__ == '__main__':
                                                                                               block_num,
                                                                                               comm_block.Get_rank()
                                                                                             ))
-    if args.n_process>1:
+    if args.n_processes>1:
         t_b_processes= []
         if block_num !=0:
-            _,_, b_processes = mm.get_groups(comm_block, args.n_master, args.n_process)
+            _,_, b_processes = mm.get_groups(comm_block, args.n_masters, args.n_processes)
             ## collect all block=>world rank translation
             r2r = (comm_block.Get_rank() , comm_world.Get_rank())
             all_r2r = comm_block.allgather( r2r )
@@ -330,41 +312,18 @@ if __name__ == '__main__':
         print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
                                                                                  comm_block.Get_rank()))
-        data = H5Data(batch_size=args.batch,
-                      cache = args.caching_dir,
-                      preloading = args.data_preload,
-                      features_name=features_name,
-                      labels_name=labels_name
-        )
-        print('found data')
-        data.set_file_names( train_list )
-        print('set file names')
-        validate_every = int(data.count_data()/args.batch )
-        print('validate every')
-        print (data.count_data(),"samples to train on")
-        if args.easgd:
-            algo = Algo(None, loss=args.loss, validate_every=validate_every,
-                        mode='easgd', sync_every=args.sync_every,
-                        worker_optimizer=args.worker_optimizer,
-                        elastic_force=args.elastic_force/(comm_block.Get_size()-1),
-                        elastic_lr=args.elastic_lr, 
-                        elastic_momentum=args.elastic_momentum) 
-        else:
-            algo = Algo(args.optimizer, 
-                        loss=args.loss, 
-                        validate_every=validate_every,
-                        sync_every=args.sync_every,
-                        worker_optimizer=args.worker_optimizer
-                    )
+        from TrainingDriver import make_loader
+        data = make_loader(args, features_name, labels_name, train_list)
+
+        from TrainingDriver import make_algo
+        algo = make_algo( args, comm_block , validate_every=int(data.count_data()/args.batch ))
  
-        os.environ['KERAS_BACKEND'] = backend
-        #import_keras()
         block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,
-                                           num_masters = args.n_master,
-                                           num_process = args.n_process,
+                                           num_masters = args.n_masters,
+                                           num_process = args.n_processes,
                                            verbose=args.verbose,
                                            early_stopping=args.early_stopping,
                                            target_metric=args.target_metric,
