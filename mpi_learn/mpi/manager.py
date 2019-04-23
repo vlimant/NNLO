@@ -420,7 +420,8 @@ class MPIKFoldManager(MPIManager):
             return
         
         if int(comm.Get_size() / float(NFolds))<=1:
-            logging.warning("There is less than one master+one worker per fold, this isn't going to work")
+            logging.warning("There is only one master+one worker per fold, this isn't going to work well")
+            #MPI.COMM_WORLD.Abort()
             
         ## actually split further the work in folds
         rank = comm.Get_rank()
