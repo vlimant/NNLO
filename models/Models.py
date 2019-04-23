@@ -1,22 +1,6 @@
 ### Predefined Keras models
 
-#import setGPU
-#import numpy as np
 import sys
-try:
-    from keras.models import Sequential, Model
-    from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
-    from keras.layers import Convolution2D, MaxPooling2D, Conv2D
-    import keras.backend as K
-except:
-    print ("no keras support")
-
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-except:
-    print ("no torch support")
 
 def model_function(model_name):
     """Constructs the Keras model indicated by model_name"""
@@ -42,6 +26,8 @@ def make_model(model_name, **args):
 
 def make_example_model():
     """Example model from keras documentation"""
+    from keras.models import Sequential
+    from keras.layers import Dense, Activation
     model = Sequential()
     model.add(Dense(output_dim=64, input_dim=100))
     model.add(Activation("relu"))
@@ -50,6 +36,9 @@ def make_example_model():
     return model
 
 def make_topclass_model(**args):
+    from keras.models import Sequential, Model
+    from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
+    from keras.layers import Convolution2D, MaxPooling2D, Conv2D
     if args:print ("receiving arguments",args)    
     conv_layers=args.get('conv_layers',2)
     dense_layers=args.get('dense_layers',2)
@@ -88,6 +77,9 @@ def make_topclass_model(**args):
     return model
 
 def make_cifar10_model(**args):
+    from keras.models import Sequential, Model
+    from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
+    from keras.layers import Convolution2D, MaxPooling2D, Conv2D
     if args:print ("receiving arguments",args)    
     nb_classes = 10
     img_rows, img_cols = 32, 32
@@ -149,6 +141,10 @@ def make_cifar10_model(**args):
     return model
 
 def make_mnist_model(**args):
+    from keras.models import Sequential, Model
+    from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
+    from keras.layers import Convolution2D, MaxPooling2D, Conv2D
+    import keras.backend as K
     """MNIST ConvNet from keras/examples/mnist_cnn.py"""
     #np.random.seed(1337)  # for reproducibility
     if args:print ("receiving arguments",args)

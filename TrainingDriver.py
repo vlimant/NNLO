@@ -26,18 +26,17 @@ if __name__ == '__main__':
     parser.add_argument('--profile',help='profile theano code',action='store_true')
     parser.add_argument('--monitor',help='Monitor cpu and gpu utilization', action='store_true')
     parser.add_argument('--trace',help='Record timeline of activity', action='store_true')
-    parser.add_argument('--tf', help='use tensorflow backend', action='store_true')
-    parser.add_argument('--torch', help='use pytorch', action='store_true')
+    parser.add_argument('--backend', help='specify the backend to be used', choices= ['keras','torch'],default='keras')
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('model', help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
     # training data arguments
-    parser.add_argument('train_data', help='text file listing data inputs for training')
-    parser.add_argument('val_data', help='text file listing data inputs for validation')
+    parser.add_argument('--train_data', help='text file listing data inputs for training', default=None)
+    parser.add_argument('--val_data', help='text file listing data inputs for validation', default=None)
     parser.add_argument('--features-name', help='name of HDF5 dataset with input features',
             default='features', dest='features_name')
     parser.add_argument('--labels-name', help='name of HDF5 dataset with output labels',
@@ -70,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
     parser.add_argument('--mode',help='Mode of operation.'
-     'One of "sgd" (Stohastic Gradient Descent), "easgd" (Elastic Averaging SGD) or "gem" (Gradient Energy Matching)',default='sgd')
+                        'One of "sgd" (Stohastic Gradient Descent), "easgd" (Elastic Averaging SGD) or "gem" (Gradient Energy Matching)',default='sgd',choices=['sgd','easgd','gem'])
     parser.add_argument('--elastic-force',help='beta parameter for EASGD',type=float,default=0.9)
     parser.add_argument('--elastic-lr',help='worker SGD learning rate for EASGD',
             type=float, default=1.0, dest='elastic_lr')
@@ -91,25 +90,44 @@ if __name__ == '__main__':
 
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
 
-    with open(args.train_data) as train_list_file:
-        train_list = [ s.strip() for s in train_list_file.readlines() ]
-    with open(args.val_data) as val_list_file:
-        val_list = [ s.strip() for s in val_list_file.readlines() ]
-
+    a_backend = args.backend
+    if 'torch' in args.model:
+        a_backend = 'torch'
+        
+    m_module = __import__(args.model.replace('.py','')) if '.py' in args.model else None
+        
+    if args.train_data:
+        with open(args.train_data) as train_list_file:
+            train_list = [ s.strip() for s in train_list_file.readlines() ]
+    elif m_module is not None:
+        train_list = m_module.get_train()
+    else:
+        logging.info("no training data provided")
+        
+    if args.val_data:
+        with open(args.val_data) as val_list_file:
+            val_list = [ s.strip() for s in val_list_file.readlines() ]
+    elif m_module is not None:
+        val_list = m_module.get_val()
+    else:
+        logging.info("no validation data provided")
+        
     comm = MPI.COMM_WORLD.Dup()
 
     if args.trace: Trace.enable()
 
     model_weights = None
-
+    use_tf = a_backend == 'keras'
+    use_torch = not use_tf
+    
     if args.restore:
         args.restore = re.sub(r'\.algo$', '', args.restore)
         if os.path.isfile(args.restore + '.latest'):
             with open(args.restore + '.latest', 'r') as latest:
                 args.restore = latest.read().splitlines()[-1]
-        if not args.tf and os.path.isfile(args.restore + '.model'):
+        if use_torch and os.path.isfile(args.restore + '.model'):
             model_weights = args.restore + '.model'
-        if args.torch:
+        if use_torch:
             model_weights += '_w'
 
     # Theano is the default backend; use tensorflow if --tf is specified.
@@ -117,7 +135,7 @@ if __name__ == '__main__':
     device = get_device( comm, args.masters, gpu_limit=args.max_gpus,
                 gpu_for_master=args.master_gpu)
     hide_device = True
-    if args.torch:
+    if use_torch:
         logging.debug("Using pytorch")
         if not args.optimizer.endswith("torch"):
             args.optimizer = args.optimizer + 'torch'
@@ -130,46 +148,34 @@ if __name__ == '__main__':
                 torch.cuda.set_device(int(device[-1]))
         model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
     else:
-        if args.tf:
-            logging.debug("Using TensorFlow")
-            backend = 'tensorflow'
-            if not args.optimizer.endswith("tf"):
-                args.optimizer = args.optimizer + 'tf'
-            if hide_device:
-                os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
-                logging.debug('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
-        else:
-            logging.debug("Using Theano")
-            backend = 'theano'
-            os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
-        os.environ['KERAS_BACKEND'] = backend
+        logging.debug("Using TensorFlow")
+        if not args.optimizer.endswith("tf"):
+            args.optimizer = args.optimizer + 'tf'
+        if hide_device:
+            os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+            logging.debug('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
+        os.environ['KERAS_BACKEND'] = 'tensorflow'
 
         import_keras()
         import keras.backend as K
-        if args.tf:
+        gpu_options=K.tf.GPUOptions(
+            per_process_gpu_memory_fraction=0.1, #was 0.0
+            allow_growth = True,
+            visible_device_list = device[-1] if 'gpu' in device else '')
+        if hide_device:
             gpu_options=K.tf.GPUOptions(
-                per_process_gpu_memory_fraction=0.1, #was 0.0
-                allow_growth = True,
-                visible_device_list = device[-1] if 'gpu' in device else '')
-            if hide_device:
-                gpu_options=K.tf.GPUOptions(
-                    per_process_gpu_memory_fraction=0.0,
-                    allow_growth = True,)        
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-                allow_soft_placement=True, log_device_placement=False,
-                gpu_options=gpu_options
-            ) ) )
-        if args.tf:
-            tf_device = device
-            if hide_device:
-                tf_device = 'gpu0' if 'gpu' in device else ''
-            model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
-            logging.debug("Using device {}".format(model_builder.device))
-        else:
-            model_builder = ModelFromJson( comm, args.model ,weights=model_weights)
-            logging.debug("using device {}".format(device))
-            os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
-            # GPU ops need to be executed synchronously in order for profiling to make sense
+                per_process_gpu_memory_fraction=0.0,
+                allow_growth = True,)        
+        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=False,
+            gpu_options=gpu_options
+        ) ) )
+        tf_device = device
+        if hide_device:
+            tf_device = 'gpu0' if 'gpu' in device else ''
+        model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
+        logging.debug("Using device {}".format(model_builder.device))
+
         if args.profile:
             os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -198,10 +204,13 @@ if __name__ == '__main__':
                 worker_optimizer=args.worker_optimizer,
                 worker_optimizer_params=args.worker_optimizer_params,
                 learning_rate=args.gem_lr, momentum=args.gem_momentum, kappa=args.gem_kappa)
-    else:
+    elif args.mode == 'sgd':
         algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
                 sync_every=args.sync_every, worker_optimizer=args.worker_optimizer,
-                worker_optimizer_params=args.worker_optimizer_params) 
+                worker_optimizer_params=args.worker_optimizer_params)
+    else:
+        logging.info("%s not supported mode", args.mode)
+        
     if args.restore:
         algo.load(args.restore)
 

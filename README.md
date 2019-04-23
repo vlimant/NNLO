@@ -3,13 +3,16 @@ Distributed learning with mpi
 
 Dependencies: [`OpenMPI`](https://www.open-mpi.org/) and [`mpi4py`](http://mpi4py.readthedocs.io/en/stable/) (v. >= 2.0.0), [`keras`](https://keras.io/) (v. >= 1.2.0)
 
-Test with the MNIST dataset:
+Test with the MNIST dataset, with keras+tensorflow
 ```
 git clone https://github.com/vlimant/NNLO.git
 cd NNLO
-python models/get_mnist.py
-mpirun -np 3 python3 TrainingDriver.py example_mnist.py train_mnist.list test_mnist.list --loss categorical_crossentropy --epochs 3
+
+mpirun -np 3 python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3
+mpirun -np 3 python3 TrainingDriver.py --model example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+
 mpirun -np 7 python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
+
 ```
 
 ## Using TrainingDriver.py to train your model
