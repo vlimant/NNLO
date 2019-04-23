@@ -56,15 +56,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
 
 import coordinator
 import process_block
-try:
-    ## first try to get from mpi_learn
-    import models.Models as models
-except:
-    logging.error("failed to load mpi_learn")
-
-## where the models were defined before
-#import mpiLAPI as mpi 
-
+import models.Models as models
 
 def get_block_num(comm, block_size):
     """
@@ -118,6 +110,7 @@ def make_opt_parser():
 
 if __name__ == '__main__':
 
+    logging.info("Process is on",socket.gethostname())
     parser = make_opt_parser()
     args = parser.parse_args()
     check_sanity(args)
@@ -295,7 +288,7 @@ if __name__ == '__main__':
                 hgb = map(tuple, gb)
                 w_processes.update( hgb )
         if block_num == 0:
-            print ("all collect processes",w_processes)
+            logging.info("all collect processes",w_processes)
             ## now you have the ranks that needs to be initialized in rings.
 
     # MPI process 0 coordinates the Bayesian optimization procedure
