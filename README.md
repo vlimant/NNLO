@@ -7,12 +7,20 @@ Test with the MNIST dataset, with keras+tensorflow
 ```
 git clone https://github.com/vlimant/NNLO.git
 cd NNLO
+```
+Example with mnist provided in a python file
+```
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+```
+Example with the cifar10 with model json
+```
+python3 BuildModel.py cifar10
+python3 models/get_cifar10.py
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
 
-mpirun -np 3 python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3
-mpirun -np 3 python3 TrainingDriver.py --model example_mnist_torch.py --loss categorical_crossentropy --epochs 3
-
-mpirun -np 7 python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
-
+```
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
 ```
 
 ## Using TrainingDriver.py to train your model
