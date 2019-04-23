@@ -21,6 +21,11 @@ python3 models/get_cifar10.py
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
 ```
 
+Example of training mnist with 2 workers, each with 2 process per Horovod ring
+```
+mpirun -np 5 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3 --processes 2
+```
+
 Example of training mnist with early stopping
 ```
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
