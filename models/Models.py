@@ -80,6 +80,7 @@ def make_cifar10_model(**args):
     from keras.models import Sequential, Model
     from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from keras.layers import Convolution2D, MaxPooling2D, Conv2D
+    import keras.backend as K
     if args:print ("receiving arguments",args)    
     nb_classes = 10
     img_rows, img_cols = 32, 32
