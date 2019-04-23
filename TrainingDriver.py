@@ -146,7 +146,7 @@ if __name__ == '__main__':
         else:
             if 'gpu' in device:
                 torch.cuda.set_device(int(device[-1]))
-        if m_module and hasttar("builder", m_module):
+        if m_module and hasattr(m_module, "builder"):
             model_builder = m_module.builder
         else:
             model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
@@ -176,7 +176,7 @@ if __name__ == '__main__':
         tf_device = device
         if hide_device:
             tf_device = 'gpu0' if 'gpu' in device else ''
-        if m_module and hasttar("builder", m_module):
+        if m_module and hasattr(m_module,"builder"):
             model_builder = m_module.builder( comm, source=args.model, device_name=tf_device , weights=model_weights)
         else:
             model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
