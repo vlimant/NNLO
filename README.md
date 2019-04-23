@@ -13,14 +13,17 @@ Example with mnist provided in a python file
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist_torch.py --loss categorical_crossentropy --epochs 3
 ```
+
 Example with the cifar10 with model json
 ```
 python3 BuildModel.py cifar10
 python3 models/get_cifar10.py
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
-
 ```
-mpirun -np 7 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
+
+Example of training mnist with early stopping
+```
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
 ```
 
 ## Using TrainingDriver.py to train your model
@@ -103,6 +106,12 @@ During training, a Worker reads one batch of training data and computes the grad
 ![downpour](docs/downpour.png)
 
 ### Hyper-parameter Optimization
+
+Example of running hyper-optimization on mnist model
+```
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
+```
+
 
 FURTHER DOCUMENTATION TO BE ADDED
 
