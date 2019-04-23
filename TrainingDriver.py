@@ -146,7 +146,10 @@ if __name__ == '__main__':
         else:
             if 'gpu' in device:
                 torch.cuda.set_device(int(device[-1]))
-        model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
+        if m_module and hasttar("builder", m_module):
+            model_builder = m_module.builder
+        else:
+            model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
     else:
         logging.debug("Using TensorFlow")
         if not args.optimizer.endswith("tf"):
@@ -173,7 +176,10 @@ if __name__ == '__main__':
         tf_device = device
         if hide_device:
             tf_device = 'gpu0' if 'gpu' in device else ''
-        model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
+        if m_module and hasttar("builder", m_module):
+            model_builder = m_module.builder( comm, source=args.model, device_name=tf_device , weights=model_weights)
+        else:
+            model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
         logging.debug("Using device {}".format(model_builder.device))
 
         if args.profile:
