@@ -26,6 +26,11 @@ Example of training mnist with early stopping
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
 ```
 
+Example of training with a fixed target
+```
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
+```
+
 ## Using TrainingDriver.py to train your model
 
 `TrainingDriver.py` will load a keras model of your choice and train it on the input data you provide.  The script has three required arguments:
