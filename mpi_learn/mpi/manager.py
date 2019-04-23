@@ -321,10 +321,8 @@ class MPIManager(object):
                                                self.comm_instance.Get_rank() if self.comm_instance else "N/A")
                )
         if not files_for_this_worker:
-            ## this is bad and needs to make it abort
             logging.debug("There are no files for training, this is a fatal issue")
-            import sys
-            sys.exit(13)
+            MPI.COMM_WORLD.Abort()
             
         for f in files_for_this_worker:
             logging.debug("  {0}".format(f))
@@ -336,10 +334,8 @@ class MPIManager(object):
         if not self.should_validate: return None
         logging.debug("Files for validation:" )
         if not self.val_list:
-            ## this is bad and needs to make it abort
             logging.error("There are no files for validating, this is a fatal issue")
-            import sys
-            sys.exit(13)
+            MPI.COMM_WORLD.Abort()
                                                 
         for f in self.val_list:
             logging.debug("  {0}".format(f))
