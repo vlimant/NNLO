@@ -1,6 +1,7 @@
 import numpy as np
 from skopt.space import Real, Integer
 from copy import deepcopy
+import logging
 
 class GA(object):
     """
@@ -43,7 +44,7 @@ class GA(object):
             for j in range(len(self.paramRanges)):
                 if isinstance(self.paramRanges[j], Integer):
                     rounded[i][j] = int(rounded[i][j])
-        print('Asked for:', rounded)
+        logging.debug('Asked for: {}'.format(rounded))
         return rounded
     
     # needs params/results to have length populationSize
@@ -52,13 +53,13 @@ class GA(object):
         for i in range(len(searchIn)):
             for j in range(len(params)):
                 if params[j] == searchIn[i] and self.fitness[i] == self.blank:
-                    print('Found told params')
+                    logging.debug('Found told params')
                     self.fitness[i] = 1/results[j]
-        print('Fitness:', self.fitness)
+        logging.debug('Fitness: {}'.format(self.fitness))
         if self.blank not in self.fitness:
-            print('Population before stepping:', self.population)
+            logging.debug('Population before stepping: {}'.format(self.population))
             self.step(generation)
-            print('Population after stepping:', self.population)
+            logging.debug('Population after stepping: {}'.format(self.population))
         
         loss = 1
         
@@ -69,7 +70,7 @@ class GA(object):
         
     
     def step(self, generation):
-        print('Stepping in generation', generation, 'with fitness:', self.fitness)
+        logging.debug('Stepping in generation {} with fitness: {}'.format(generation, self.fitness))
         children = []
         newFitness = [self.blank]*self.populationSize
         
