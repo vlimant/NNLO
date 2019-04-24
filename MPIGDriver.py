@@ -7,6 +7,7 @@ import numpy as np
 import argparse
 import json
 import re
+import logging
 
 from mpi4py import MPI
 from time import time,sleep
@@ -16,7 +17,9 @@ from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
 from mpi_learn.train.model import ModelFromJson, ModelTensorFlow
 from mpi_learn.utils import import_keras
+from mpi_learn.logger import initialize_logger
 import socket
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -71,9 +74,12 @@ if __name__ == '__main__':
     parser.add_argument('--elastic-momentum',help='worker SGD momentum for EASGD',
             type=float, default=0, dest='elastic_momentum')
     parser.add_argument('--restore', help='pass a file to retore the variables from', default=None)
+    parser.add_argument('--log-file', default=None, dest='log_file', help='log file to write, in additon to output stream')
+    parser.add_argument('--log-level', default='info', dest='log_level', help='log level (debug, info, warn, error)')
 
     args = parser.parse_args()
     model_name = os.path.basename(args.model_json).replace('.json','')
+    initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)    
 
     with open(args.train_data) as train_list_file:
         train_list = [ s.strip() for s in train_list_file.readlines() ]
@@ -100,13 +106,13 @@ if __name__ == '__main__':
             args.optimizer = args.optimizer + 'tf'
         if hide_device:
             os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
-            print ('set to device',os.environ['CUDA_VISIBLE_DEVICES'],socket.gethostname())
+            logging.info('set to device %s %s'%(os.environ['CUDA_VISIBLE_DEVICES'], socket.gethostname()))
     else:
         backend = 'theano'
         os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
     os.environ['KERAS_BACKEND'] = backend
 
-    print (backend)
+    logging.info(backend)
     import_keras()
     import keras.backend as K
     if args.tf:
@@ -130,11 +136,11 @@ if __name__ == '__main__':
         #model_builder = ModelTensorFlow( comm, filename=args.model_json, device_name=device , weights=model_weights)
         from mpi_learn.train.GanModel import GANModelBuilder
         model_builder  = GANModelBuilder( comm , device_name=device, tf= True, weights=model_weights)
-        print ("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
+        logging.info("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
     else:
         from mpi_learn.train.GanModel import GANModelBuilder
         model_builder  = GANModelBuilder( comm , device_name=device, weights=model_weights)
-        print ("Process {0} using device {1}".format(comm.Get_rank(),device))
+        logging.info("Process {0} using device {1}".format(comm.Get_rank(),device))
         os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
         # GPU ops need to be executed synchronously in order for profiling to make sense
         if args.profile:
@@ -176,15 +182,19 @@ if __name__ == '__main__':
 
     # Process 0 launches the training procedure
     if comm.Get_rank() == 0:
-        print (algo)
+        logging.info(algo)
 
         t_0 = time()
         histories = manager.process.train() 
         delta_t = time() - t_0
         manager.free_comms()
-        print ("Training finished in {0:.3f} seconds".format(delta_t))
+        logging.info("Training finished in {0:.3f} seconds".format(delta_t))
 
         json_name = '_'.join([model_name,args.trial_name,"history.json"]) 
         manager.process.record_details(json_name,
                                        meta={"args":vars(args)})
-        print ("Wrote trial information to {0}".format(json_name))
+        logging.info("Wrote trial information to {0}".format(json_name))
+
+    logging.info("before barrier")
+    comm.Barrier()
+    logging.info("after barrier")
