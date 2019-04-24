@@ -122,7 +122,7 @@ if __name__ == '__main__':
     test = args.example
     model_source = args.model
     a_backend = args.backend
-    if 'torch' in args.model:
+    if args.model and 'torch' in args.model:
         a_backend = 'torch'
     use_tf = a_backend == 'keras'
     use_torch = not use_tf
