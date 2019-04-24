@@ -124,7 +124,7 @@ mpirun -np 7 --tag-output python3 OptimizationDriver.py --model example_mnist.py
 
 Example of running hyper-optimization on mnist model, with 2-fold cross validation
 ```
-vlimant@gpu-3-imperium-sm:~/opt-paper/NNLO$ mpirun -np 13 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 6 --epochs 5 --num-iterations 10 --n-fold 2"
+mpirun -np 13 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 6 --epochs 5 --num-iterations 10 --n-fold 2
 ```
 
 
