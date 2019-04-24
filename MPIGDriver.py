@@ -195,6 +195,5 @@ if __name__ == '__main__':
                                        meta={"args":vars(args)})
         logging.info("Wrote trial information to {0}".format(json_name))
 
-    logging.info("before barrier")
     comm.Barrier()
-    logging.info("after barrier")
+    logging.info("Terminating")
