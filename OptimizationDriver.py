@@ -36,7 +36,7 @@ class BuilderFromFunction(object):
             return ModelTensorFlow(None, source=model)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in self._args(*params).items())
-            print("Failed to build model with params: {}".format(str_param))
+            logging.warning("Failed to build model with params: {}".format(str_param))
             return None
         
 class TorchBuilderFromFunction(BuilderFromFunction):
@@ -51,7 +51,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
             return ModelPytorch(None, source=model_pytorch)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
-            print("Failed to build model with params: {}".format(str_param))
+            logging.warning("Failed to build model with params: {}".format(str_param))
             return None
 
 import coordinator
@@ -60,7 +60,7 @@ try:
     ## first try to get from mpi_learn
     import models.Models as models
 except:
-    print ("failed to load mpi_learn")
+    logging.error("failed to load mpi_learn")
 
 ## where the models were defined before
 #import mpiLAPI as mpi 
@@ -118,10 +118,10 @@ def make_opt_parser():
 
 if __name__ == '__main__':
 
-    print ("Process is on",socket.gethostname())
     parser = make_opt_parser()
     args = parser.parse_args()
     check_sanity(args)
+    initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
 
     import socket
     host = os.environ.get('HOST',os.environ.get('HOSTNAME',socket.gethostname()))
@@ -265,9 +265,9 @@ if __name__ == '__main__':
         if 'gpu' in device:
             model_provider.gpus=1
             
-    print("Process {} using device {}".format(comm_world.Get_rank(), device))
+    logging.debug("Process {} using device {}".format(comm_world.Get_rank(), device))
     comm_block = comm_world.Split(block_num)
-    print ("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
+    logging.debug("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
                                                                                               num_blocks,
                                                                                               block_num,
                                                                                               comm_block.Get_rank()
@@ -309,7 +309,7 @@ if __name__ == '__main__':
         opt_coordinator.run(num_iterations=args.num_iterations)
         opt_coordinator.record_details()
     else:
-        print ("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
+        logging.debug("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
                                                                                  comm_block.Get_rank()))
         from TrainingDriver import make_loader

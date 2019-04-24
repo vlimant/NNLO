@@ -1,6 +1,7 @@
 ### Predefined Keras models
 
 import sys
+import logging
 
 def model_function(model_name):
     """Constructs the Keras model indicated by model_name"""
@@ -20,7 +21,7 @@ def make_model(model_name, **args):
         provided = set(args.keys())
         accepted = set([a.name for a in m_fn.parameter_range])
         if not provided.issubset( accepted ):
-            print ("provided arguments",sorted(provided),"do not match the accepted ones",sorted(accepted))
+            logging.error("provided arguments {} do not match the accepted ones {}".format(sorted(provided),sorted(accepted)))
             sys.exit(-1)
     return model_function(model_name)(**args)
 
@@ -39,7 +40,7 @@ def make_topclass_model(**args):
     from keras.models import Sequential, Model
     from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from keras.layers import Convolution2D, MaxPooling2D, Conv2D
-    if args:print ("receiving arguments",args)    
+    if args:logging.debug("receiving arguments {}".format(args))
     conv_layers=args.get('conv_layers',2)
     dense_layers=args.get('dense_layers',2)
     dropout=args.get('dropout',0.2)
@@ -81,7 +82,7 @@ def make_cifar10_model(**args):
     from keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from keras.layers import Convolution2D, MaxPooling2D, Conv2D
     import keras.backend as K
-    if args:print ("receiving arguments",args)    
+    if args:logging.debug("receiving arguments {}".format(args))
     nb_classes = 10
     img_rows, img_cols = 32, 32
     
@@ -148,7 +149,7 @@ def make_mnist_model(**args):
     import keras.backend as K
     """MNIST ConvNet from keras/examples/mnist_cnn.py"""
     #np.random.seed(1337)  # for reproducibility
-    if args:print ("receiving arguments",args)
+    if args:logging.debug("receiving arguments {}".format(args))
     nb_classes = 10
     # input image dimensions
     img_rows, img_cols = 28, 28
@@ -185,13 +186,13 @@ def make_mnist_model(**args):
     return model
 
 def make_mnist_torch_model(**args):
-    if args:print ("receiving arguments",args)    
+    if args:logging.debug("receiving arguments {}".format(args))
     from TorchModels import MNistNet
     model = MNistNet(**args)
     return model
 
 def make_topclass_torch_model(**args):
-    if args:print ("receiving arguments",args)    
+    if args:logging.debug("receiving arguments {}".format(args))
     conv_layers=args.get('conv_layers',2)
     dense_layers=args.get('dense_layers',2)
     dropout=args.get('dropout',0.5)

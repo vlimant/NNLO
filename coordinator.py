@@ -6,8 +6,11 @@ import pickle
 import time
 import hashlib
 import numpy as np
+from mpi4py import MPI
 from genetic_algorithm import GA
 from tag_lookup import tag_lookup
+from mpi_learn.logger import set_logging_prefix
+import logging
 
 class Coordinator(object):
     """
@@ -30,7 +33,8 @@ class Coordinator(object):
     
     def __init__(self, comm, num_blocks,
                  opt_params, ga, populationSize):
-        print("Coordinator initializing")
+        set_logging_prefix(MPI.COMM_WORLD.Get_rank(), process_type='C')
+        logging.debug("Coordinator initializing")
         self.comm = comm
         self.num_blocks = num_blocks
 
@@ -85,7 +89,7 @@ class Coordinator(object):
         if os.path.isfile(fn):
             self.history.setdefault('load',fn)
             with open(fn, 'rb') as state:
-                print ("Loading the coordinator from",fn)
+                logging.info("Loading the coordinator from",fn)
                 self_dict = pickle.load(state)
                 self_dict.pop('comm') # Skip MPI objects (they are invalid)
                 self_dict.pop('req_dict')
@@ -93,7 +97,7 @@ class Coordinator(object):
                 self.__dict__.update(self_dict)
                 self.next_params[:0] = active_params
         else:
-            print('Failed to load coordinator state from {}, starting from scratch'.format(fn))
+            logging.warning('Failed to load coordinator state from {}, starting from scratch'.format(fn))
 
     def fit(self, step):
         X = [o[0] for o in self.to_tell]
@@ -104,11 +108,11 @@ class Coordinator(object):
                 self.best_params = opt_result[0]
                 self.best_fom = opt_result[1]
             else:
-                print ("Fitting from {} values".format( len (X)))
+                logging.debug("Fitting from {} values".format( len (X)))
                 opt_result = self.optimizer.tell( X, Y )
                 self.best_params = opt_result.x
                 self.best_fom = opt_result.fun
-                print("New best param estimate, with telling {} points : {}, with value {}".format(len(X),self.best_params, self.best_fom))
+                logging.info("New best param estimate, with telling {} points : {}, with value {}".format(len(X),self.best_params, self.best_fom))
                 self.next_params = []
             self.to_tell = []
             ## checkpoint your self
@@ -117,7 +121,7 @@ class Coordinator(object):
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
                                                        'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
             if self.target_fom and opt_result.fun < self.target_fom:
-                print ("the optimization has reached the desired value at optimum",self.target_fom)
+                logging.info("the optimization has reached the desired value at optimum",self.target_fom)
                 self.ends_cycle = True
 
     def tell(self, params, result, step):
@@ -133,12 +137,12 @@ class Coordinator(object):
             loopMax *= self.populationSize
         for step in range(self.iter, loopMax + 1):
             next_block = self.wait_for_idle_block(step)
-            print("Coordinator iteration {}".format(step))
+            logging.info("Coordinator iteration {}".format(step))
             if self.ends_cycle:
-                print("Coordinator is skiping the iteration cycle")
+                logging.info("Coordinator is skiping the iteration cycle")
                 break
             next_params = self.ask( num_iterations )
-            print("Next block: {}, next params {}".format(next_block, next_params))
+            logging.info("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
             self.save()
 
@@ -148,11 +152,11 @@ class Coordinator(object):
         
         ## end all processes
         for proc in range(1, self.comm.Get_size()):
-            print("Signaling process {} to exit".format(proc))
+            logging.debug("Signaling process {} to exit".format(proc))
             self.comm.send(None, dest=proc, tag=tag_lookup('params'))
         self.comm.Barrier()
-        print("Finished all iterations!")
-        print("Best parameters found: {} with value {}".format(self.best_params, self.best_fom))
+        logging.info("Finished all iterations!")
+        logging.info("Best parameters found: {} with value {}".format(self.best_params, self.best_fom))
         
     def wait_for_idle_block(self, step):
         """
@@ -167,12 +171,12 @@ class Coordinator(object):
             for cur_block in blocklist:
                 idle = self.check_block(cur_block, step)
                 if idle:
-                    print ("From coordinator, block {} is found idling, and can be used next".format( cur_block))
+                    logging.debug("From coordinator, block {} is found idling, and can be used next".format( cur_block))
                     return cur_block
 
     def close_blocks(self, step):
         while self.block_dict:
-            print (len(self.block_dict),"blocks still running")
+            logging.debug("Closing blocks, {} blocks still running", len(self.block_dict))
             for block_num in list(self.block_dict.keys()):
                 self.check_block( block_num, step)
             time.sleep(5)
@@ -187,11 +191,11 @@ class Coordinator(object):
             if done:
                 params = self.block_dict.pop(block_num)
                 if np.isnan(result):
-                    print("Skipped telling due to invalid model params {}".format(params))
+                    logging.info("Skipped telling due to invalid model params {}".format(params))
                 else:
                     self.param_list.append(params)
                     self.fom_list.append(result)
-                    print("Telling {} at {}".format(result, params))
+                    logging.debug("Telling {} at {}".format(result, params))
                     self.tell( params, result, step )
                 del self.req_dict[block_num]
                 self.iter += 1
@@ -207,7 +211,7 @@ class Coordinator(object):
         block_size = int((self.comm.Get_size()-1)/self.num_blocks)
         start = (block_num-1) * block_size + 1 
         end = block_num * block_size 
-        print("Launching block {}. Sending params to nodes from {} to {}".format(block_num, start,end))
+        logging.debug("Launching block {}. Sending params to nodes from {} to {}".format(block_num, start,end))
         for proc in range(start, end+1):
             self.comm.send(params, dest=proc, tag=tag_lookup('params')) 
         self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))
