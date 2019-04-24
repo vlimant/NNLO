@@ -34,7 +34,6 @@ class Coordinator(object):
     def __init__(self, comm, num_blocks,
                  opt_params, ga, populationSize):
         set_logging_prefix(MPI.COMM_WORLD.Get_rank(), process_type='C')
-        #self.logger = get_logger()
         logging.debug("Coordinator initializing")
         self.comm = comm
         self.num_blocks = num_blocks
