@@ -288,7 +288,7 @@ if __name__ == '__main__':
                 hgb = map(tuple, gb)
                 w_processes.update( hgb )
         if block_num == 0:
-            logging.info("all collect processes",w_processes)
+            logging.info("all collect processes {}".format(w_processes))
             ## now you have the ranks that needs to be initialized in rings.
 
     # MPI process 0 coordinates the Bayesian optimization procedure
