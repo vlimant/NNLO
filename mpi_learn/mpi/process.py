@@ -206,12 +206,17 @@ class MPIProcess(object):
             -Send the update (if the parent accepts it)
             -Sync time and model weights with parent"""
         if self.is_shadow():
-            return            
+            return
+        logging.debug("do_send_sequence:: sending update")
         self.send_update(check_permission=True)
+        logging.debug("do_send_sequence:: receiving time step")
         self.time_step = self.recv_time_step()
+        logging.debug("do_send_sequence:: receiving weights")
         self.recv_weights()
+        logging.debug("do_send_sequence:: setting weight")        
         self.algo.set_worker_model_weights( self.model, self.weights )
-
+        logging.debug("do_send_sequence:: done")
+        
     def apply_update(self):
         """Updates weights according to update received from worker process"""
         with np.errstate( divide='raise',
@@ -377,18 +382,23 @@ class MPIProcess(object):
             and dest (rank).  We first send expect_tag to tell the dest process that we 
             are sending several buffer objects, then send the objects layer by layer.
             Optionally check first to see if the update will be accepted by the master"""
+        logging.debug("send_array:: advertising {} to {}".format( expect_tag, dest ))
         self.send( None, expect_tag, comm=comm, dest=dest )
         if check_permission:
+            logging.debug("send_array:: checkign permission to send {} to {}".format( tag, dest))
             # To check permission we send the update's time stamp to the master.
             # Then we wait to receive the decision yes/no.
             self.send_time_step( comm=comm, dest=dest )
             decision = self.recv_bool( comm=comm, source=dest )
             if not decision: return
+        logging.debug("send_array:: expecting to send {} object".format( len( obj)))            
         for o in obj:
             if type(o) == list:
                 for w in o:
+                    logging.debug("send_arrays:: send w {} to {}".format(tag, dest))
                     self.send( w, tag, comm=comm, dest=dest, buffer=True )
             else:
+                logging.debug("send_arrays:: send o {} to {}".format(tag, dest))
                 self.send( o, tag, comm=comm, dest=dest, buffer=True )
 
     def send_weights(self, comm=None, dest=None, check_permission=False):
@@ -427,11 +437,14 @@ class MPIProcess(object):
             for i in range(len(obj)):
                 obj[i] += tmp[i]
             return
+        logging.debug("recv_array:: expecting to receive {} object".format( len( obj)))
         for o in obj:
             if type(o) == list:
                 for w in o:
+                    logging.debug("recv_array:: recv w {} from {}".format(tag, source))
                     self.recv( w, tag, comm=comm, source=source, buffer=True )
             else:
+                logging.debug("recv_array:: recv o {} from {}".format(tag, source))                
                 self.recv( o, tag, comm=comm, source=source, buffer=True )
 
     def recv_weights(self, comm=None, source=None, add_to_existing=False):
@@ -552,13 +565,17 @@ class MPIWorker(MPIProcess):
                         self.model.set_weights(self.weights)
 
                 Trace.begin("train_on_batch")
+                #self.logger.debug("Beginning batch {:d}".format(i_batch))
                 train_metrics = self.model.train_on_batch( x=batch[0], y=batch[1] )
+                #self.logger.debug("Done with batch {:d}".format(i_batch))
                 Trace.end("train_on_batch")
                 if epoch_metrics.shape != train_metrics.shape:
                     epoch_metrics = np.zeros( train_metrics.shape)
                 epoch_metrics += train_metrics
                 if self.algo.should_sync():
+                    self.logger.debug("train:: synching with parent")                    
                     self.sync_with_parent()
+                    self.logger.debug("train:: synched with parent")
                 if exit_request and exit_request.Test():
                     self.stop_training = True
                     if self.process_comm:
@@ -678,7 +695,9 @@ class MPIMaster(MPIProcess):
             self.sync_child(child)
 
     def sync_child(self, child):
+        logging.debug("sync_child:: sending time step to {}".format(child))
         self.send_time_step( dest=child, comm=self.child_comm )
+        logging.debug("sync_child:: sending weights to {}".format(child))        
         self.send_weights( dest=child, comm=self.child_comm )
 
     def sync_parent(self):
@@ -693,29 +712,46 @@ class MPIMaster(MPIProcess):
          -If we accept, we signal the worker and wait to receive the update.
          -After receiving the update, we determine whether to sync with the workers.
          -Finally we run validation if we have completed one epoch's worth of updates."""
+        logging.debug("do_update_sequence:: receiving time step")
         child_time = self.recv_time_step( source=source, comm=self.child_comm )
         self.algo.staleness = self.time_step - child_time
+        logging.debug("do_update_sequence:: checking on update")
         accepted = self.accept_update()
+        logging.debug("do_update_sequence:: messaging accepted {} update".format(accepted))
         self.send_bool( accepted, dest=source, comm=self.child_comm )
+        
         if accepted:
+            logging.debug("do_update_sequence:: receiving the update")
             self.recv_update( source=source, comm=self.child_comm, 
                     add_to_existing=self.is_synchronous() )
+            logging.debug("do_update_sequence:: received")
             self.waiting_workers_list.append(source)
             if self.decide_whether_to_sync():
+                logging.debug("do_update_sequence:: synching with enough workers update")
                 if self.algo.send_before_apply:
+                    logging.debug("do_update_sequence:: sending before applying")
                     self.sync_parent()
+                    logging.debug("do_update_sequence:: parent synched")
                     self.sync_children()
+                    logging.debug("do_update_sequence:: child synched")
                     self.apply_update()
+                    logging.debug("do_update_sequence:: update applied")
                 else:
+                    logging.debug("do_update_sequence:: applying before sending")
                     self.apply_update()
+                    logging.debug("do_update_sequence:: update applied")
                     self.sync_parent()
+                    logging.debug("do_update_sequence:: parent synched")
                     self.sync_children()
+                    logging.debug("do_update_sequence:: child synched")
                 self.update = self.model.format_update()
+            logging.debug("do_update_sequence:: synched")
             if (self.algo.validate_every > 0 and self.time_step > 0):
                 if (self.time_step % self.algo.validate_every == 0) or (self._short_batches and self.time_step%self._short_batches == 0):
                     self.validate(self.weights)
                     self.epoch += 1
                     self.save_checkpoint()
+            logging.debug("do_update_sequence:: validated")
         else:
             self.sync_child(source)
 
@@ -753,8 +789,11 @@ class MPIMaster(MPIProcess):
             -begin_gem: Worker needs central variable to start GEM
             -exit: worker is done training and will shut down
         """
+        logging.debug("process_message:: getting source")
         source = status.Get_source()
+        logging.debug("process_message:: getting tag from {}".format(source))
         tag = self.lookup_mpi_tag( status.Get_tag(), inv=True )
+        logging.debug("process_message:: processing tag {}".format(tag))
         if tag == 'begin_update':
             if self.algo.mode == 'gem':
                 self.do_gem_update_sequence(source)
@@ -795,8 +834,11 @@ class MPIMaster(MPIProcess):
         self.waiting_workers_list = []
         
         while self.running_workers:
+            logging.debug("receiving something from a child")
             self.recv_any_from_child(status)
+            logging.debug("processing message")
             self.process_message( status )
+            logging.debug("moving on")
             if (self.stop_training):
                 self.shut_down_workers()
         self.logger.info("Done training")
