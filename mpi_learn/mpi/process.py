@@ -207,6 +207,7 @@ class MPIProcess(object):
             -Sync time and model weights with parent"""
         if self.is_shadow():
             return
+        #time.sleep(1)
         logging.debug("do_send_sequence:: sending update")
         self.send_update(check_permission=True)
         logging.debug("do_send_sequence:: receiving time step")
@@ -239,9 +240,9 @@ class MPIProcess(object):
             'bool':           5,
             'history':        6,
             'weights':        12,
-            'update':         12,
-            'begin_gem':      13,
-            'update_gem':     14,
+            'update':         13,
+            'begin_gem':      14,
+            'update_gem':     16,
             }
     # This dict is for reverse tag lookups.
     inv_tag_lookup = { value:key for key,value in tag_lookup.items() }
@@ -284,19 +285,28 @@ class MPIProcess(object):
         #if tag in ['bool','time']:
         #    comm.Recv(obj, source=source, tag=tag_num, status=status )
         #    return obj
+        logging.debug("recv:: comm {} size {} rank {} from {}".format(comm.Get_group(), comm.Get_size(), comm.Get_rank(), source))        
         if buffer:
             if type(obj) == list:
                 for o in obj:
                     if type(o) == list:
                         for sub_o in o:
+                            logging.debug("recv::Recv sub_o {} {} {}".format(source, tag_num, status))                            
                             comm.Recv( sub_o, source=source, tag=tag_num, status=status )
+                            logging.debug("recv::Recv +sub_o {} {} {}".format(source, tag_num, status))                                                        
                     else:
+                        logging.debug("recv::Recv o {} {} {}".format(source, tag_num, status))
                         comm.Recv( o, source=source, tag=tag_num, status=status )
+                        logging.debug("recv::Recv +o {} {} {}".format(source, tag_num, status))                                                
             else:
+                logging.debug("recv::Recv obj {} {} {}".format(source, tag_num, status))
                 comm.Recv( obj, source=source, tag=tag_num, status=status )
+                logging.debug("recv::Recv +obj {} {} {}".format(source, tag_num, status))
             return obj
         else:
+            logging.debug("recv::recv {} {} {}".format(source, tag_num, status))            
             obj = comm.recv( source=source, tag=tag_num, status=status )
+            logging.debug("recv::recv + {} {} {}".format(source, tag_num, status))                        
             return obj
 
     def send(self, obj, tag, dest=None, buffer=False, comm=None):
@@ -320,26 +330,39 @@ class MPIProcess(object):
         #if tag in ['time']:
         #    comm.Send( obj, dest=dest, tag=tag_num )
         #    return
+        logging.debug("send:: comm {} size {} rank {} to {}".format(comm.Get_group(), comm.Get_size(), comm.Get_rank(), dest))
         if buffer:
             if type(obj) == list:
                 for o in obj:
                     if type(o) == list:
                         for sub_o in o:
+                            logging.debug("send::Send sub_o {} {}".format(dest, tag_num))
                             comm.Send( sub_o, dest=dest, tag=tag_num )
+                            logging.debug("send::Send +sub_o {} {}".format(dest, tag_num))
                     else:
+                        logging.debug("send::Send o {} {}".format(dest, tag_num))
                         comm.Send( o, dest=dest, tag=tag_num )
+                        logging.debug("send::Send +o {} {}".format(dest, tag_num))
             else:
+                logging.debug("send::Send obj {} {}".format(dest, tag_num))                 
                 comm.Send( obj, dest=dest, tag=tag_num )
+                logging.debug("send::Send +obj {} {}".format(dest, tag_num))                
         else:
             if type(obj) == list:
                 for o in obj:
                     if type(o) == list:
                         for sub_o in o:
+                            logging.debug("send::Send sub_o {} {}".format(dest, tag_num))                            
                             comm.Send( sub_o, dest=dest, tag=tag_num )
+                            logging.debug("send::Send +sub_o {} {}".format(dest, tag_num))                                                        
                     else:
+                        logging.debug("send::Send o {} {}".format(dest, tag_num))
                         comm.Send( o, dest=dest, tag=tag_num )
+                        logging.debug("send::Send +o {} {}".format(dest, tag_num))                        
             else:
+                logging.debug("send::send obj {} {}".format(dest, tag_num))                
                 comm.send( obj, dest=dest, tag=tag_num )
+                logging.debug("send::send +obj {} {}".format(dest, tag_num))                                
 
     def bcast(self, obj, root=0, buffer=False, comm=None):
         """Wrapper around MPI.bcast/Bcast.  Returns the broadcasted object.
@@ -385,20 +408,21 @@ class MPIProcess(object):
         logging.debug("send_array:: advertising {} to {}".format( expect_tag, dest ))
         self.send( None, expect_tag, comm=comm, dest=dest )
         if check_permission:
-            logging.debug("send_array:: checkign permission to send {} to {}".format( tag, dest))
+            logging.debug("send_array:: checking permission to send {} to {}".format( tag, dest))
             # To check permission we send the update's time stamp to the master.
             # Then we wait to receive the decision yes/no.
             self.send_time_step( comm=comm, dest=dest )
             decision = self.recv_bool( comm=comm, source=dest )
             if not decision: return
-        logging.debug("send_array:: expecting to send {} object".format( len( obj)))            
-        for o in obj:
+        logging.debug("send_array:: expecting to send {} object".format( len( obj)))
+        for i_o,o in enumerate(obj):
+            #if tag == 'weights': time.sleep(0.1)
             if type(o) == list:
                 for w in o:
-                    logging.debug("send_arrays:: send w {} to {}".format(tag, dest))
+                    logging.debug("send_arrays:: send w {} to {} {}/{}".format(tag, dest, i_o, len(obj)))
                     self.send( w, tag, comm=comm, dest=dest, buffer=True )
             else:
-                logging.debug("send_arrays:: send o {} to {}".format(tag, dest))
+                logging.debug("send_arrays:: send o {} to {} {}/{}".format(tag, dest, i_o, len(obj)))
                 self.send( o, tag, comm=comm, dest=dest, buffer=True )
 
     def send_weights(self, comm=None, dest=None, check_permission=False):
@@ -418,11 +442,13 @@ class MPIProcess(object):
     def send_time_step(self, comm=None, dest=None):
         if self.is_shadow():return        
         """Send the current time step"""
-        self.send( obj=self.time_step, tag='time', dest=dest, comm=comm )
+        new_t = int(self.time_step)
+        self.send( obj=new_t, tag='time', dest=dest, comm=comm)
 
     def send_bool(self, obj, comm=None, dest=None):
-        if self.is_shadow():return        
-        self.send( obj=obj, tag='bool', dest=dest, comm=comm )
+        if self.is_shadow():return
+        new_b = bool(obj)
+        self.send( obj=new_b, tag='bool', dest=dest, comm=comm)
 
     def recv_arrays(self, obj, tag, comm=None, source=None, add_to_existing=False):
         """Receive a list of numpy arrays from the process specified by comm (MPI communicator) 
@@ -438,13 +464,14 @@ class MPIProcess(object):
                 obj[i] += tmp[i]
             return
         logging.debug("recv_array:: expecting to receive {} object".format( len( obj)))
-        for o in obj:
+        for i_o,o in enumerate(obj):
+            #if tag == 'weights': time.sleep(0.1)            
             if type(o) == list:
                 for w in o:
-                    logging.debug("recv_array:: recv w {} from {}".format(tag, source))
+                    logging.debug("recv_array:: recv w {} from {} {}/{}".format(tag, source, i_o, len(obj)))
                     self.recv( w, tag, comm=comm, source=source, buffer=True )
             else:
-                logging.debug("recv_array:: recv o {} from {}".format(tag, source))                
+                logging.debug("recv_array:: recv o {} from {} {}/{}".format(tag, source, i_o, len(obj)))                
                 self.recv( o, tag, comm=comm, source=source, buffer=True )
 
     def recv_weights(self, comm=None, source=None, add_to_existing=False):
@@ -464,11 +491,11 @@ class MPIProcess(object):
     def recv_time_step(self, comm=None, source=None):
         """Receive the current time step"""
         if self.is_shadow():return
-        return self.recv( tag='time', comm=comm, source=source )
+        return self.recv( tag='time', comm=comm, source=source)
 
     def recv_bool(self, comm=None, source=None):
         if self.is_shadow():return        
-        return self.recv( tag='bool', comm=comm, source=source )
+        return self.recv( tag='bool', comm=comm, source=source)
 
     def recv_exit_from_parent(self):
         ir = None
@@ -565,9 +592,10 @@ class MPIWorker(MPIProcess):
                         self.model.set_weights(self.weights)
 
                 Trace.begin("train_on_batch")
-                #self.logger.debug("Beginning batch {:d}".format(i_batch))
+                self.logger.debug("Beginning batch {:d}".format(i_batch))
                 train_metrics = self.model.train_on_batch( x=batch[0], y=batch[1] )
-                #self.logger.debug("Done with batch {:d}".format(i_batch))
+                #time.sleep(0.5)
+                self.logger.debug("Done with batch {:d}".format(i_batch))
                 Trace.end("train_on_batch")
                 if epoch_metrics.shape != train_metrics.shape:
                     epoch_metrics = np.zeros( train_metrics.shape)
@@ -834,14 +862,14 @@ class MPIMaster(MPIProcess):
         self.waiting_workers_list = []
         
         while self.running_workers:
-            logging.debug("receiving something from a child")
+            logging.debug("MPIMaster::train:: receiving something from a child")
             self.recv_any_from_child(status)
-            logging.debug("processing message")
+            logging.debug("MPIMaster::train:: processing message")
             self.process_message( status )
-            logging.debug("moving on")
+            logging.debug("MPIMaster::train:: moving on")
             if (self.stop_training):
                 self.shut_down_workers()
-        self.logger.info("Done training")
+        self.logger.info("MPIMaster::train:: Done training")
         # If we did not finish the last epoch, validate one more time.
         # (this happens if the batch size does not divide the dataset size)
         if self.epoch < self.num_epochs or not self.histories.get(self.history_key(),None):
@@ -985,7 +1013,9 @@ class MPIMaster(MPIProcess):
     def recv_any_from_child(self,status):
         """Receives any message from any child.  Returns the provided status object,
             populated with information about received message"""
+        logging.debug("recv_any_from_child:: recv")
         self.recv( tag='any', source=MPI.ANY_SOURCE, status=status, comm=self.child_comm )
+        logging.debug("recv_any_from_child:: + recv")
         return status
 
     def recv_history_from_child(self, child):

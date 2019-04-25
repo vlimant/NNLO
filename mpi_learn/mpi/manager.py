@@ -75,7 +75,7 @@ def get_device(comm, num_masters=1, gpu_limit=-1, gpu_for_master=False):
             else:
                 logging.debug("Sharing a node and taking on the gpu")
                 dev = 'gpu%d' % (gpu_list[worker_id%len(gpu_list)])
-            logging.debug("rank %d can have %s",rank,dev)
+            logging.debug("rank {} can have {}".format(rank,dev))
         comm.Barrier()
     return dev
             
@@ -180,7 +180,7 @@ class MPIManager(object):
         rank = comm.Get_rank()
         masters, groups, processes = get_groups( comm, self.num_masters, self.num_processes)
 
-        logging.debug("masters %s", str(masters))
+        logging.debug("masters {}".format(str(masters)))
         if len(masters)>1:
             self.comm_masters = comm.Create( comm.Get_group().Incl( masters ))
         if rank in masters:
@@ -190,7 +190,7 @@ class MPIManager(object):
             self.should_validate = True
 
             
-        logging.debug("groups %s", str(groups))
+        logging.debug("groups {}".format( str(groups)))
         for igr,gr in enumerate(groups):
             if rank in gr:
                 self.comm_block = comm.Split( igr )
@@ -202,7 +202,7 @@ class MPIManager(object):
         if not self.is_master and self.comm_block:
             self.worker_id = self.comm_block.Get_rank()
 
-        logging.debug("processes %s", str(processes))
+        logging.debug("processes {}".format( str(processes)))
         for ipr,pr in enumerate(processes):
             if rank in pr and len(pr)>1:
                 ## make the communicator for that process group
@@ -217,9 +217,9 @@ class MPIManager(object):
             ids = self.comm_instance.allgather( self.worker_id )
             self.worker_id = list(filter(lambda i:i!=-1, ids))[0]
 
-        logging.debug("master comm",self.comm_masters.Get_size() if self.comm_masters else "N/A")
-        logging.debug("block comm",self.comm_block.Get_size() if self.comm_block else "N/A")
-        logging.debug("instance comm",self.comm_instance.Get_size() if self.comm_instance else "N/A")
+        logging.debug("master comm {}".format(self.comm_masters.Get_size() if self.comm_masters else "N/A"))
+        logging.debug("block comm {}".format(self.comm_block.Get_size() if self.comm_block else "N/A"))
+        logging.debug("instance comm {}".format(self.comm_instance.Get_size() if self.comm_instance else "N/A"))
         
         # Case (1)
         if self.num_masters > 1:
@@ -310,8 +310,8 @@ class MPIManager(object):
 
     def set_train_data(self, use_all=False):
         """Sets the training data files to be used by the current process"""
-        logging.debug("number of workers %d",self.num_workers)
-        logging.debug("number of files %d",len(self.train_list))
+        logging.debug("number of workers {}".format(self.num_workers))
+        logging.debug("number of files {}".format(len(self.train_list)))
         if use_all:
             files_for_this_worker = self.train_list
         else:
