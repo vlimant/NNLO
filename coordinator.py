@@ -176,7 +176,7 @@ class Coordinator(object):
 
     def close_blocks(self, step):
         while self.block_dict:
-            logging.debug("Closing blocks, %s blocks still running"%len(self.block_dict))
+            logging.debug("Closing blocks, {} blocks still running".format(len(self.block_dict)))
             for block_num in list(self.block_dict.keys()):
                 self.check_block( block_num, step)
             time.sleep(5)
