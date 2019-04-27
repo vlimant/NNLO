@@ -217,9 +217,9 @@ class MPIManager(object):
             ids = self.comm_instance.allgather( self.worker_id )
             self.worker_id = list(filter(lambda i:i!=-1, ids))[0]
 
-        logging.debug("master comm",self.comm_masters.Get_size() if self.comm_masters else "N/A")
-        logging.debug("block comm",self.comm_block.Get_size() if self.comm_block else "N/A")
-        logging.debug("instance comm",self.comm_instance.Get_size() if self.comm_instance else "N/A")
+        logging.debug("Master communicator size: {}".format(self.comm_masters.Get_size() if self.comm_masters else "N/A"))
+        logging.debug("Block communicator size: {}".format(self.comm_block.Get_size() if self.comm_block else "N/A"))
+        logging.debug("Instance communicator size: {}".format(self.comm_instance.Get_size() if self.comm_instance else "N/A"))
         
         # Case (1)
         if self.num_masters > 1:
