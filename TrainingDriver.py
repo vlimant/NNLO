@@ -17,7 +17,7 @@ from mpi_learn.train.algo import Algo
 from mpi_learn.train.data import H5Data
 from mpi_learn.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
 from mpi_learn.utils import import_keras
-from mpi_learn.train.trace import Trace
+from mpi_learn.train.timeline import Timeline
 from mpi_learn.logger import initialize_logger
 
 def make_Block_Parser():
@@ -69,7 +69,7 @@ def add_target_options(parser):
 
 def make_train_parser():
     parser = argparse.ArgumentParser()    
-    parser.add_argument('--trace',help='Record timeline of activity', action='store_true')
+    parser.add_argument('--timeline',help='Record timeline of activity', action='store_true')
     add_train_options(parser)
 
     return parser
@@ -201,7 +201,7 @@ if __name__ == '__main__':
         
     comm = MPI.COMM_WORLD.Dup()
 
-    if args.trace: Trace.enable()
+    if args.timeline: Timeline.enable()
 
     model_weights = None
     use_tf = a_backend == 'keras'
@@ -300,4 +300,4 @@ if __name__ == '__main__':
 
     comm.barrier()
     logging.info("Terminating")
-    if args.trace: Trace.collect(clean=True)
+    if args.timeline: Timeline.collect(clean=True)
