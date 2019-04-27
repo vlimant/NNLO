@@ -4,6 +4,7 @@ import logging
 from os.path import abspath
 
 level_map = {
+    'trace': logging.DEBUG - 5,
     'debug': logging.DEBUG,
     'info': logging.INFO,
     'warn': logging.WARNING,
@@ -15,6 +16,38 @@ file_handler = None
 stream_handler = None
 
 start_time = time.time()
+
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    """
+    Comprehensively adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    `levelName` becomes an attribute of the `logging` module with the value
+    `levelNum`. `methodName` becomes a convenience method for both `logging`
+    itself and the class returned by `logging.getLoggerClass()` (usually just
+    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    used.
+    """
+    if not methodName:
+        methodName = levelName.lower()
+
+    if hasattr(logging, levelName):
+       raise AttributeError('{} already defined in logging module'.format(levelName))
+    if hasattr(logging, methodName):
+       raise AttributeError('{} already defined in logging module'.format(methodName))
+    if hasattr(logging.getLoggerClass(), methodName):
+       raise AttributeError('{} already defined in logger class'.format(methodName))
+
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            self._log(levelNum, message, args, **kwargs)
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
 
 class ElapsedTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
@@ -75,14 +108,17 @@ class MPIFileHandler(logging.FileHandler):
 def initialize_logger(filename=None, file_level='info', stream=True, stream_level='info'):
     global file_handler
     global stream_handler
-    level = get_log_level(file_level)
+    addLoggingLevel('TRACE', get_log_level('trace'))
     logger = logging.getLogger()
-    logger.setLevel(level)
+    logger.setLevel(min(get_log_level(file_level), get_log_level(stream_level))) # Lowest level that will be propagated to handlers
+    logger.handlers = []
     if filename is not None:
         file_handler = MPIFileHandler(filename)
+        file_handler.setLevel(get_log_level(file_level))
         logger.addHandler(file_handler)
     if stream:
         stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(get_log_level(stream_level))
         logger.addHandler(stream_handler)
     set_logging_prefix(MPI.COMM_WORLD.rank)
 
