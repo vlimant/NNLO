@@ -2,9 +2,16 @@ from mpi4py import MPI
 import time
 import logging
 from os.path import abspath
+from functools import wraps
+import inspect
+import importlib
+import numpy as np
+import re
+
+TRACE = logging.DEBUG - 5
 
 level_map = {
-    'trace': logging.DEBUG - 5,
+    'trace': TRACE,
     'debug': logging.DEBUG,
     'info': logging.INFO,
     'warn': logging.WARNING,
@@ -53,7 +60,7 @@ class ElapsedTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         global start_time
         total_millis = int(record.created - start_time) * 1000 + int(record.msecs)
-        
+
         millis = total_millis%1000
         millis = int(millis)
         seconds=(total_millis/1000)%60
@@ -108,7 +115,7 @@ class MPIFileHandler(logging.FileHandler):
 def initialize_logger(filename=None, file_level='info', stream=True, stream_level='info'):
     global file_handler
     global stream_handler
-    addLoggingLevel('TRACE', get_log_level('trace'))
+    addLoggingLevel('TRACE', TRACE)
     logger = logging.getLogger()
     logger.setLevel(min(get_log_level(file_level), get_log_level(stream_level))) # Lowest level that will be propagated to handlers
     logger.handlers = []
@@ -121,6 +128,9 @@ def initialize_logger(filename=None, file_level='info', stream=True, stream_leve
         stream_handler.setLevel(get_log_level(stream_level))
         logger.addHandler(stream_handler)
     set_logging_prefix(MPI.COMM_WORLD.rank)
+    if file_level == 'trace' or stream_level == 'trace':
+        # Disable tracing of optimize for now
+        add_trace_decorators(train=True, mpi=True, optimize=False)
 
 def get_log_level(levelstr='info'):
     levelstr = levelstr.lower()
@@ -138,3 +148,84 @@ def set_logging_prefix(world_rank, parent_rank='-', process_rank='-', process_ty
 
 def get_logger():
     return logging.getLogger()
+
+def add_trace_decorators(train=True, mpi=True, optimize=False):
+    train_module_names = ['algo', 'data', 'model', 'optimizer']
+    mpi_module_names = ['manager', 'process', 'single_process']
+    optimize_module_names = ['coordinator', 'process_block']
+
+    if train:
+        for mod_name in train_module_names:
+            mod = importlib.import_module('..train.' + mod_name, package=__name__)
+            _decorate_module(mod)
+
+    if mpi:
+        for mod_name in mpi_module_names:
+            mod = importlib.import_module('..mpi.' + mod_name, package=__name__)
+            _decorate_module(mod)
+
+    #if optimize:
+    #    for mod_name in optimize_module_names:
+    #        mod = importlib.import_module('..optimize.' + mod_name, package=__name__)
+    #        _decorate_module(mod)
+
+def _decorate_module(mod):
+    # Module-level functions
+    tl_func_list = inspect.getmembers(mod, inspect.isfunction)
+    for name, func in tl_func_list:
+        skip = False
+        for regex in skip_trace:
+            if re.search(regex, func.__qualname__) is not None:
+                skip = True
+                break
+        if skip:
+            logging.log(TRACE, "Skipping tracing of {}".format(func.__qualname__))
+        else:
+            setattr(mod, name, _trace(func))
+    # Class functions
+    cls_list = inspect.getmembers(mod, inspect.isclass)
+    for _, clazz in cls_list:
+        cls_func_list = inspect.getmembers(clazz, lambda x: inspect.isfunction(x) or inspect.ismethod(x))
+        logging.log(TRACE, "Class {} function list {}".format(clazz.__name__, cls_func_list))
+        for fname, func in cls_func_list:
+            skip = False
+            for regex in skip_trace:
+                if re.search(regex, func.__qualname__) is not None:
+                    skip = True
+                    break
+            if skip:
+                logging.log(TRACE, "Skipping tracing of {}".format(func.__qualname__))
+            else:
+                setattr(clazz, fname, _trace(func))
+
+
+skip_trace = [
+    'Monitor.*',
+    'Timeline.*',
+    'Data.is_numpy_array',
+    'MPIProcess.lookup_mpi_tag',
+    'Thread.*'
+]
+
+def _trace(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        def str_type(obj):
+            if type(obj) == list:
+                return 'list[{}]'.format(len(obj))
+            elif isinstance(obj, np.ndarray):
+                return 'ndarray[{}]'.format(obj.shape)
+            else:
+                return str(obj)
+        real_args = args[1:] if '.' in function.__qualname__ else args
+        print_args = [str_type(arg) for arg in real_args]
+        print_kwargs = ['{}={}'.format(k, str_type(v)) for k, v in kwargs.items()]
+        params = ', '.join(print_args + print_kwargs)
+        logging.log(TRACE, '>>> {}.{}({})'.format(function.__module__, function.__qualname__, params))
+
+        ret_val = function(*args, **kwargs)
+
+        logging.log(TRACE, '<<< {}.{}'.format(function.__module__, function.__qualname__))
+        return ret_val
+
+    return wrapper
