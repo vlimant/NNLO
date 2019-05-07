@@ -359,13 +359,8 @@ class TFOptimizer(Optimizer):
 
         gradient_dict = {placeholder : value for placeholder, value in zip(self.gradient, gradient)}
 
-        #Trace.begin("tf_optimizer")
         self.sess.run(self.optimizer_op, feed_dict=gradient_dict)
-        #Trace.end("tf_optimizer")
-
-        #Trace.begin("tf_get_weights")
         res = self.sess.run(self.weights)
-        #Trace.end("tf_get_weights")
 
         return res
 

@@ -92,9 +92,8 @@ class Algo(object):
         return config
 
     def __str__(self):
-        strs = [ "optimizer: "+str(self.optimizer_name) ]
-        strs += [ opt+": "+str(getattr(self, opt)) for opt in self.supported_opts ]
-        return '\n'.join(strs)
+        params = [ "{}={!s}".format(opt, getattr(self, opt)) for opt in self.supported_opts ]
+        return "Algo(optimizer={}, {})".format(self.optimizer_name, ",".join(params))
 
     ### For Worker ###
 
