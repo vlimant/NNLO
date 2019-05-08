@@ -27,15 +27,6 @@ def opt_tag_lookup(tag):
             }
     return tags.get(tag, 0)
 
-def get_num_gpus():
-    """Returns the number of GPUs available"""
-    logging.debug("Determining number of GPUs...")
-    from pycuda import driver 
-    driver.init()
-    num_gpus = driver.Device.count()
-    logging.debug("Number of GPUs: {}".format(num_gpus))
-    return num_gpus
-
 def get_device_name(dev_type, dev_num, backend='theano'):
     """Returns cpu/gpu device name formatted for
     theano or keras, as specified by the backend argument"""

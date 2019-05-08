@@ -10,8 +10,8 @@ cd NNLO
 ```
 Example with mnist provided in a python file
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist_torch.py --loss categorical_crossentropy --epochs 3
 ```
 
 Example with the cifar10 with model json
@@ -23,17 +23,17 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --
 
 Example of training mnist with 2 workers, each with 2 process per Horovod ring
 ```
-mpirun -np 5 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 3 --processes 2
+mpirun -np 5 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --processes 2
 ```
 
 Example of training mnist with early stopping
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
 ```
 
 Example of training with a fixed target
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
+mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
 ```
 
 ## Using TrainingDriver.py to train your model
@@ -119,12 +119,12 @@ During training, a Worker reads one batch of training data and computes the grad
 
 Example of running hyper-optimization on mnist model
 ```
-mpirun -np 7 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 3 --num-iterations 10
 ```
 
 Example of running hyper-optimization on mnist model, with 2-fold cross validation
 ```
-mpirun -np 13 --tag-output python3 OptimizationDriver.py --model example_mnist.py --block-size 6 --epochs 5 --num-iterations 10 --n-fold 2
+mpirun -np 13 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 6 --epochs 5 --num-iterations 10 --n-fold 2
 ```
 
 

@@ -89,7 +89,7 @@ class Coordinator(object):
         if os.path.isfile(fn):
             self.history.setdefault('load',fn)
             with open(fn, 'rb') as state:
-                logging.info("Loading the coordinator from",fn)
+                logging.info("Loading the coordinator from {}".format(fn))
                 self_dict = pickle.load(state)
                 self_dict.pop('comm') # Skip MPI objects (they are invalid)
                 self_dict.pop('req_dict')
@@ -121,7 +121,7 @@ class Coordinator(object):
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
                                                        'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
             if self.target_fom and opt_result.fun < self.target_fom:
-                logging.info("the optimization has reached the desired value at optimum",self.target_fom)
+                logging.info("The optimization has reached the desired value at optimum {}".format(self.target_fom))
                 self.ends_cycle = True
 
     def tell(self, params, result, step):

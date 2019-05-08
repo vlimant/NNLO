@@ -129,7 +129,7 @@ if __name__ == '__main__':
     
     if model_source is not None:
         ## provide the model details here
-        module = __import__(args.model.replace('.py',''))
+        module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None])
         if use_tf:
             model_provider = BuilderFromFunction( model_fn = module.get_model )
         else:

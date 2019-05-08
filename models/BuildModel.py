@@ -6,7 +6,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES']=""
 import argparse
 
-from models.Models import make_model
+from Models import make_model
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

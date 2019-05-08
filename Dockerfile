@@ -7,6 +7,6 @@ RUN pip3 install mpi4py psutil gpustat scikit-optimize h5py==2.7.0 && \
 
 RUN apt-get -y install s3cmd
 
-RUN git clone "https://github.com/svalleco/mpi_learn.git" "/mpi_learn"
+RUN git clone "https://github.com/vlimant/NNLO.git" "/nnlo"
 
-WORKDIR "/mpi_learn"
+WORKDIR "/nnlo"
