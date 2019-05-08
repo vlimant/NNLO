@@ -15,6 +15,18 @@ def shapes_from_weights(weights):
     """Returns a list of tuples indicating the array shape of each layer of the NN"""
     return [ w.shape for w in weights ]
 
+def opt_tag_lookup(tag):
+    """
+    Gets the integer corresponding to the given tag string
+    """
+    tags = {
+            'json':1,
+            'result':2,
+            'mbuilder':3,
+            'params':4
+            }
+    return tags.get(tag, 0)
+
 def get_num_gpus():
     """Returns the number of GPUs available"""
     logging.debug("Determining number of GPUs...")

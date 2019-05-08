@@ -1,6 +1,6 @@
 ### ModelBuilder class and associated helper methods
 
-from mpi_learn.utils import load_model, get_device_name
+from nnlo.util.utils import load_model, get_device_name
 from .optimizer import OptimizerBuilder
 import numpy as np
 import copy
@@ -265,7 +265,7 @@ class MPITModel(MPIModel):
         if loss in lookup:
             return lookup[loss]()
         else:
-            logger.warning("No loss mapping found, using CrossEntropyLoss")
+            logging.warning("No loss mapping found, using CrossEntropyLoss")
             return torch.nn.CrossEntropyLoss()
 
     def _accuracy(self, output, target, topk=(1,)):

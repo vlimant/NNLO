@@ -12,13 +12,13 @@ import logging
 from mpi4py import MPI
 from time import time,sleep
 
-from mpi_learn.mpi.manager import MPIManager, get_device
-from mpi_learn.train.algo import Algo
-from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
-from mpi_learn.utils import import_keras
-from mpi_learn.train.timeline import Timeline
-from mpi_learn.logger import initialize_logger
+from nnlo.mpi.manager import MPIManager, get_device
+from nnlo.train.algo import Algo
+from nnlo.train.data import H5Data
+from nnlo.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
+from nnlo.util.utils import import_keras
+from nnlo.util.timeline import Timeline
+from nnlo.util.logger import initialize_logger
 
 def make_Block_Parser():
     pass

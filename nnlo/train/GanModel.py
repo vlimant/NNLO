@@ -30,8 +30,8 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import (UpSampling3D, Conv3D, ZeroPadding3D,
                                         AveragePooling3D)
 
-from mpi_learn.utils import get_device_name
-from mpi_learn.train.model import MPIModel, ModelBuilder
+from ..util.utils import get_device_name
+from ..train.model import MPIModel, ModelBuilder
 from .optimizer import OptimizerBuilder
 
 import keras

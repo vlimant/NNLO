@@ -9,10 +9,10 @@ import logging
 
 from mpi4py import MPI
 
-from ..train.monitor import Monitor
-from ..train.timeline import Timeline, timeline
-from ..utils import Error, weights_from_shapes, shapes_from_weights
-from ..logger import get_logger, set_logging_prefix
+from ..util.monitor import Monitor
+from ..util.timeline import Timeline, timeline
+from ..util.utils import Error, weights_from_shapes, shapes_from_weights
+from ..util.logger import get_logger, set_logging_prefix
 
 ### Classes ###
 

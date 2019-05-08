@@ -4,8 +4,6 @@ import socket
 import time
 import logging
 
-from ..train.monitor import Monitor
-from ..utils import Error, weights_from_shapes, shapes_from_weights
 from .process import MPIWorker, MPIMaster
 
 class MPISingleWorker(MPIWorker):

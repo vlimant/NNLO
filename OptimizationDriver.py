@@ -9,14 +9,16 @@ import socket
 import logging
 from mpi4py import MPI
 
-from mpi_learn.train.algo import Algo
-from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelTensorFlow, ModelPytorch
-from mpi_learn.utils import import_keras
-import mpi_learn.mpi.manager as mm
-from mpi_learn.train.GanModel import GANBuilder
+from nnlo.train.algo import Algo
+from nnlo.train.data import H5Data
+from nnlo.train.model import ModelTensorFlow, ModelPytorch
+from nnlo.util.utils import import_keras
+from nnlo.mpi.manager import get_device, get_groups
+from nnlo.optimize.coordinator import Coordinator
+from nnlo.optimize.process_block import ProcessBlock
+from nnlo.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
-from mpi_learn.logger import initialize_logger
+from nnlo.util.logger import initialize_logger
 
 class BuilderFromFunction(object):
     def __init__(self, model_fn, parameters=None):
@@ -54,8 +56,6 @@ class TorchBuilderFromFunction(BuilderFromFunction):
             logging.warning("Failed to build model with params: {}".format(str_param))
             return None
 
-import coordinator
-import process_block
 import models.Models as models
 
 def get_block_num(comm, block_size):
@@ -110,7 +110,7 @@ def make_opt_parser():
 
 if __name__ == '__main__':
 
-    logging.info("Process is on",socket.gethostname())
+    logging.info("Process is on {}".format(socket.gethostname()))
     parser = make_opt_parser()
     args = parser.parse_args()
     check_sanity(args)
@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
 
     block_num = get_block_num(comm_world, args.block_size)
-    device = mm.get_device(comm_world, num_blocks)
+    device = get_device(comm_world, num_blocks)
 
 
     
@@ -268,7 +268,7 @@ if __name__ == '__main__':
     if args.n_processes>1:
         t_b_processes= []
         if block_num !=0:
-            _,_, b_processes = mm.get_groups(comm_block, args.n_masters, args.n_processes)
+            _,_, b_processes = get_groups(comm_block, args.n_masters, args.n_processes)
             ## collect all block=>world rank translation
             r2r = (comm_block.Get_rank() , comm_world.Get_rank())
             all_r2r = comm_block.allgather( r2r )
@@ -293,7 +293,7 @@ if __name__ == '__main__':
 
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
-        opt_coordinator = coordinator.Coordinator(comm_world, num_blocks,
+        opt_coordinator = Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters,
                                                   (args.hyper_opt=='genetic'),args.population)
         opt_coordinator.label = args.label
@@ -311,7 +311,7 @@ if __name__ == '__main__':
         from TrainingDriver import make_algo
         algo = make_algo( args, comm_block , validate_every=int(data.count_data()/args.batch ))
  
-        block = process_block.ProcessBlock(comm_world, comm_block, algo, data, device,
+        block = ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
                                            args.epochs, train_list, val_list, 
                                            folds = args.n_fold,

@@ -9,7 +9,7 @@ import json
 import logging
 
 from ..train.data import H5Data
-from ..utils import get_num_gpus
+from ..util.utils import get_num_gpus
 
 def get_groups(comm, num_masters=1, num_processes=1):
     masters = list(range(0,num_masters)) # index 0 is the uber master, the other one asre sub-masters
