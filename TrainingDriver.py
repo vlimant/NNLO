@@ -179,7 +179,7 @@ if __name__ == '__main__':
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    m_module = __import__(args.model.replace('.py','')) if '.py' in args.model else None
+    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
     features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
     labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
     
@@ -285,11 +285,11 @@ if __name__ == '__main__':
         logging.info("Training finished in {0:.3f} seconds".format(delta_t))
 
         if args.model.endswith('.py'):
-            module = __import__(args.model.replace('.py',''))
+            module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None])
             try:
                 model_name = module.get_name()
             except:
-                model_name = os.path.basename(args.model).replace('.py','')
+                model_name = os.path.basename(args.model).replace('.py','').replace('/', '.')
         else:
             model_name = os.path.basename(args.model).replace('.json','')
 

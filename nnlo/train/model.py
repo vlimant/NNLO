@@ -424,7 +424,7 @@ class ModelTensorFlow(ModelBuilder):
             custom_objects={}, weights=None):
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__(source.replace('.py',''))
+                module = __import__(source.replace('.py','').replace('/', '.'), fromlist=[None])
                 self.model = module.get_model()
                 self.filename = None
             else:
@@ -508,7 +508,7 @@ class ModelPytorch(ModelBuilder):
         super(ModelPytorch,self).__init__(comm)
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__(source.replace('.py',''))
+                module = __import__(source.replace('.py','').replace('/', '.'), fromlist=[None])
                 self.model = module.get_model()
                 self.filename = None
             else:
