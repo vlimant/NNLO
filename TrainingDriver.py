@@ -171,7 +171,7 @@ def make_algo( args, use_tf, comm, validate_every ):
                 worker_optimizer_params=args.worker_optimizer_params,
                 learning_rate=args.gem_lr, momentum=args.gem_momentum, kappa=args.gem_kappa)
     elif args.mode == 'downpour':
-        algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
+        algo = Algo(args_opt, loss=args.loss, validate_every=validate_every,
                 sync_every=args.sync_every, worker_optimizer=args.worker_optimizer,
                 worker_optimizer_params=args.worker_optimizer_params)
     else:
