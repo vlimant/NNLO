@@ -16,7 +16,7 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mni
 
 Example with the cifar10 with model json
 ```
-python3 BuildModel.py cifar10
+python3 models/BuildModel.py cifar10
 python3 models/get_cifar10.py
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
 ```
