@@ -81,7 +81,8 @@ class Coordinator(object):
             fn = '{}-coordinator.state'.format(self.label)
         self.history.setdefault('save', fn)
         with open(fn, 'wb') as state:
-            pickle.dump( self.__dict__, state )
+            self_dict = dict([(k,v) for (k,v) in self.__dict__.items() if k not in ['comm','req_dict']])
+            pickle.dump( self_dict, state )
 
     def load(self, fn=None):
         if fn is None:
