@@ -23,7 +23,7 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --
 
 Example of training mnist with 2 workers, each with 2 process per Horovod ring
 ```
-mpirun -np 5 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --processes 2
+mpirun -np 5 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --n-processes 2
 ```
 
 Example of training mnist with early stopping
