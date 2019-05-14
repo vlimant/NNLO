@@ -146,9 +146,6 @@ def set_logging_prefix(world_rank, parent_rank='-', process_rank='-', process_ty
     if stream_handler is not None:
         stream_handler.setFormatter(formatter)
 
-def get_logger():
-    return logging.getLogger()
-
 def add_trace_decorators(train=True, mpi=True, optimize=False):
     train_module_names = ['algo', 'data', 'model', 'optimizer']
     mpi_module_names = ['manager', 'process', 'single_process']

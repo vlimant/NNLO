@@ -12,7 +12,7 @@ from mpi4py import MPI
 from ..util.monitor import Monitor
 from ..util.timeline import Timeline, timeline
 from ..util.utils import Error, weights_from_shapes, shapes_from_weights
-from ..util.logger import get_logger, set_logging_prefix
+from ..util.logger import set_logging_prefix
 
 ### Classes ###
 
@@ -78,14 +78,13 @@ class MPIProcess(object):
             self.process_comm.Get_rank() if self.process_comm is not None else '-',
             process_type
         )
-        self.logger = get_logger()
 
         if self.process_comm is not None and self.process_comm.Get_size() > 1:
             if self.model_builder.get_backend_name() == 'pytorch':
                 import horovod.torch as hvd
             else:
                 import horovod.keras as hvd
-            self.logger.debug("initializing horovod")
+            logging.debug("initializing horovod")
             self.process_comm.Barrier()
             hvd.init(comm=self.process_comm)
             self.process_comm.Barrier()
@@ -109,11 +108,11 @@ class MPIProcess(object):
                 epoch = int(latest_file.split('-')[-1])
             except:
                 epoch = 0
-                self.logger.error("Failed to restore epoch from checkpoint {}".format(self.checkpoint))
+                logging.error("Failed to restore epoch from checkpoint {}".format(self.checkpoint))
             if epoch < num_epochs:
                 self.epoch = epoch
                 self.num_epochs = num_epochs - epoch
-                self.logger.info("Continuing training from epoch {} for {} epochs".format(self.epoch, self.num_epochs))
+                logging.info("Continuing training from epoch {} for {} epochs".format(self.epoch, self.num_epochs))
 
         self.build_model()
         if (self.parent_rank is not None and self.parent_comm is not None):
@@ -153,7 +152,7 @@ class MPIProcess(object):
         """signals that the process is a sub-process and should not act normally"""
         if self.process_comm and sync:
             import inspect
-            self.logger.debug("syncing on the process communicator from",inspect.stack()[1][3])
+            logging.debug("syncing on the process communicator from",inspect.stack()[1][3])
             self.process_comm.Barrier()
         return self._is_shadow
 
@@ -181,9 +180,9 @@ class MPIProcess(object):
         """Compile the model. Note that the compilation settings
             are relevant only for Workers because the Master updates
             its weights using an mpi_learn optimizer."""
-        self.logger.debug("Compiling model")
+        logging.debug("Compiling model")
         self.algo.compile_model( self.model )
-        self.logger.debug("Compiled")
+        logging.debug("Compiled")
         
     def print_metrics(self, metrics):
         """Display metrics computed during training or validation"""
@@ -253,7 +252,7 @@ class MPIProcess(object):
         try:
             return lookup[name]
         except KeyError:
-            self.logger.error("Not found in tag dictionary: {0} -- returning None".format(name))
+            logging.error("Not found in tag dictionary: {0} -- returning None".format(name))
             return None
 
     def recv(self, obj=None, tag=MPI.ANY_TAG, source=None, buffer=False, status=None, comm=None):
@@ -536,7 +535,7 @@ class MPIWorker(MPIProcess):
         # periodically check this request to see if the parent has told us to stop training
         exit_request = self.recv_exit_from_parent()
         for epoch in range(1, self.num_epochs + 1):
-            self.logger.info("Beginning epoch {:d}".format(self.epoch + epoch))
+            logging.info("Beginning epoch {:d}".format(self.epoch + epoch))
             Timeline.begin("epoch")
             if self.monitor:
                 self.monitor.start_monitor()
@@ -565,7 +564,7 @@ class MPIWorker(MPIProcess):
                         for r in range(1, self.process_comm.Get_size()):
                             ## propagate the exit signal to processes of this worker
                             self.send_exit_to_child(r, comm=self.process_comm)
-                    self.logger.info("Received exit request from master")
+                    logging.info("Received exit request from master")
                     break
                 if self._short_batches and i_batch>self._short_batches: break
 
@@ -579,7 +578,7 @@ class MPIWorker(MPIProcess):
             if self.stop_training:
                 break
 
-        self.logger.debug("Signing off")
+        logging.debug("Signing off")
         stats = None
         if self.monitor:
             stats = self.monitor.get_stats()
@@ -771,7 +770,7 @@ class MPIMaster(MPIProcess):
     def shut_down_workers(self):
         """Signal all running workers to shut down"""
         for worker_id in self.running_workers:
-            self.logger.info("Signaling worker {0:d} to shut down".format(worker_id))
+            logging.info("Signaling worker {0:d} to shut down".format(worker_id))
             self.send_exit_to_child( worker_id )
 
     def train(self):
@@ -799,7 +798,7 @@ class MPIMaster(MPIProcess):
             self.process_message( status )
             if (self.stop_training):
                 self.shut_down_workers()
-        self.logger.info("Done training")
+        logging.info("Done training")
         # If we did not finish the last epoch, validate one more time.
         # (this happens if the batch size does not divide the dataset size)
         if self.epoch < self.num_epochs or not self.histories.get(self.history_key(),None):
@@ -840,18 +839,18 @@ class MPIMaster(MPIProcess):
 
     def validation_worker(self):
         """Main function of the validation thread"""
-        self.logger.debug("Validation thread started")
+        logging.debug("Validation thread started")
         while True:
             item = self.validation_queue.get()
             if item is None:
-                self.logger.debug("Validation thread signing off")
+                logging.debug("Validation thread signing off")
                 self.validation_queue.task_done()
                 break
             weights, model = item
             try:
                 self.validate_aux(weights, model)
             except Exception as e:
-                self.logger.error(e)
+                logging.error(e)
             self.validation_queue.task_done()
 
     def validate(self, weights):
@@ -870,7 +869,7 @@ class MPIMaster(MPIProcess):
             return {}
         model.set_weights(weights)
 
-        self.logger.debug("Starting validation")
+        logging.debug("Starting validation")
         val_metrics = np.zeros((1,))
         i_batch = 0
         for i_batch, batch in enumerate(self.data.generate_data()):
@@ -890,10 +889,10 @@ class MPIMaster(MPIProcess):
             use = self.histories[r].get(model,None) if model else self.histories[r]
             if use:
                 if m in use and ((opp=='>' and use[m][-1]>v) or (opp=='<' and use[m][-1]<v)):
-                    self.logger.debug("metric %s is %s %s, stop training",str(m),str(opp), str(v))
+                    logging.debug("metric %s is %s %s, stop training",str(m),str(opp), str(v))
                     self.stop_training = True
             else:
-                self.logger.error("fatal target stopping cannot get %s", str(m))
+                logging.error("fatal target stopping cannot get %s", str(m))
                 MPI.COMM_WORLD.Abort()
                 
         if self.patience:
@@ -919,17 +918,17 @@ class MPIMaster(MPIProcess):
                                 current = use[m][-1]
                                 current = None
                     if ref is not None and current is not None and ((ref<current and opp=='<') or (ref>current and opp=='>')):
-                        self.logger.info("metric %s is over %s patience boundary: %s (ref) %s %s (current) %s", str(m), str(p), str(ref), str(opp), str(current), "with smoothing" if smooth else "")
+                        logging.info("metric %s is over %s patience boundary: %s (ref) %s %s (current) %s", str(m), str(p), str(ref), str(opp), str(current), "with smoothing" if smooth else "")
                         self.stop_training = True
                 else:
-                    self.logger.error("fatal early stopping cannot get %s", str(m))
+                    logging.error("fatal early stopping cannot get %s", str(m))
                     MPI.COMM_WORLD.Abort()
             else:
-                self.logger.error("fatal early stopping cannot get %s", str(m))
+                logging.error("fatal early stopping cannot get %s", str(m))
                 MPI.COMM_WORLD.Abort()
-        self.logger.info("Validation metrics:")
+        logging.info("Validation metrics:")
         self.print_metrics(val_metrics)
-        self.logger.debug("Ending validation")
+        logging.debug("Ending validation")
         Timeline.end("validation", "VALIDATION")
         return None
 
