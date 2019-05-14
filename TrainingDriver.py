@@ -12,13 +12,13 @@ import logging
 from mpi4py import MPI
 from time import time,sleep
 
-from mpi_learn.mpi.manager import MPIManager, get_device
-from mpi_learn.train.algo import Algo
-from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
-from mpi_learn.utils import import_keras
-from mpi_learn.train.timeline import Timeline
-from mpi_learn.logger import initialize_logger
+from nnlo.mpi.manager import MPIManager, get_device
+from nnlo.train.algo import Algo
+from nnlo.train.data import H5Data
+from nnlo.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
+from nnlo.util.utils import import_keras
+from nnlo.util.timeline import Timeline
+from nnlo.util.logger import initialize_logger
 
 def make_Block_Parser():
     pass
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    m_module = __import__(args.model.replace('.py','')) if '.py' in args.model else None
+    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
     features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
     labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
     
@@ -285,11 +285,11 @@ if __name__ == '__main__':
         logging.info("Training finished in {0:.3f} seconds".format(delta_t))
 
         if args.model.endswith('.py'):
-            module = __import__(args.model.replace('.py',''))
+            module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None])
             try:
                 model_name = module.get_name()
             except:
-                model_name = os.path.basename(args.model).replace('.py','')
+                model_name = os.path.basename(args.model).replace('.py','').replace('/', '.')
         else:
             model_name = os.path.basename(args.model).replace('.json','')
 

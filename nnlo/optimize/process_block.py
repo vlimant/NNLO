@@ -2,10 +2,9 @@ import time
 import numpy as np
 import os
 import hashlib
-import mpi_learn.mpi.manager as mm
-import mpi_learn.train.model as model
-from mpi_learn.logger import get_logger, set_logging_prefix
-from tag_lookup import tag_lookup
+from ..mpi.manager import MPIKFoldManager
+from ..util.logger import get_logger, set_logging_prefix
+from ..util.utils import opt_tag_lookup
 
 class ProcessBlock(object):
     """
@@ -22,7 +21,7 @@ class ProcessBlock(object):
     epochs: number of training epochs
     train_list: list of training data files
     val_list: list of validation data files
-    verbose: print detailed output from underlying mpi_learn machinery
+    verbose: print detailed output from underlying training machinery
     """
 
     def __init__(self, comm_world, comm_block, algo, data, device, model_provider,
@@ -70,7 +69,7 @@ class ProcessBlock(object):
         indicating the model that should be trained.
         """
         self.logger.debug("Waiting for model params")
-        self.last_params = self.comm_world.recv(source=0, tag=tag_lookup('params'))
+        self.last_params = self.comm_world.recv(source=0, tag=opt_tag_lookup('params'))
         params = self.last_params
         if params is not None:
             self.logger.debug("Received parameters {}".format(params))
@@ -111,7 +110,7 @@ class ProcessBlock(object):
                     self.current_builder.weights = restore_name + '.model'
                 self.algo.load(restore_name)
                 self.restore = False
-            manager = mm.MPIKFoldManager( self.folds,
+            manager = MPIKFoldManager( self.folds,
                                           self.comm_block, self.data, self.algo, self.current_builder,
                                           self.epochs, self.train_list, self.val_list,
                                           num_masters=self.num_masters,
@@ -134,7 +133,7 @@ class ProcessBlock(object):
         if self.comm_block.Get_rank() == 0:
             ## only the rank=0 in the block is sending back his fom
             self.logger.debug("Sending result {} to coordinator".format(result))
-            self.comm_world.isend(result, dest=0, tag=tag_lookup('result')) 
+            self.comm_world.isend(result, dest=0, tag=opt_tag_lookup('result')) 
 
     def run(self):
         """

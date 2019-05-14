@@ -1,4 +1,3 @@
-
 from models.Models import make_mnist_model
 
 get_model = make_mnist_model

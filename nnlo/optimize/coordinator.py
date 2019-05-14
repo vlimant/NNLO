@@ -7,9 +7,9 @@ import time
 import hashlib
 import numpy as np
 from mpi4py import MPI
-from genetic_algorithm import GA
-from tag_lookup import tag_lookup
-from mpi_learn.logger import set_logging_prefix
+from .genetic_algorithm import GA
+from ..util.utils import opt_tag_lookup
+from ..util.logger import set_logging_prefix
 import logging
 
 class Coordinator(object):
@@ -89,7 +89,7 @@ class Coordinator(object):
         if os.path.isfile(fn):
             self.history.setdefault('load',fn)
             with open(fn, 'rb') as state:
-                logging.info("Loading the coordinator from",fn)
+                logging.info("Loading the coordinator from {}".format(fn))
                 self_dict = pickle.load(state)
                 self_dict.pop('comm') # Skip MPI objects (they are invalid)
                 self_dict.pop('req_dict')
@@ -121,7 +121,7 @@ class Coordinator(object):
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
                                                        'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
             if self.target_fom and opt_result.fun < self.target_fom:
-                logging.info("the optimization has reached the desired value at optimum",self.target_fom)
+                logging.info("The optimization has reached the desired value at optimum {}".format(self.target_fom))
                 self.ends_cycle = True
 
     def tell(self, params, result, step):
@@ -153,7 +153,7 @@ class Coordinator(object):
         ## end all processes
         for proc in range(1, self.comm.Get_size()):
             logging.debug("Signaling process {} to exit".format(proc))
-            self.comm.send(None, dest=proc, tag=tag_lookup('params'))
+            self.comm.send(None, dest=proc, tag=opt_tag_lookup('params'))
         self.comm.Barrier()
         logging.info("Finished all iterations!")
         logging.info("Best parameters found: {} with value {}".format(self.best_params, self.best_fom))
@@ -213,5 +213,5 @@ class Coordinator(object):
         end = block_num * block_size 
         logging.debug("Launching block {}. Sending params to nodes from {} to {}".format(block_num, start,end))
         for proc in range(start, end+1):
-            self.comm.send(params, dest=proc, tag=tag_lookup('params')) 
-        self.req_dict[block_num] = self.comm.irecv(source=start, tag=tag_lookup('result'))
+            self.comm.send(params, dest=proc, tag=opt_tag_lookup('params')) 
+        self.req_dict[block_num] = self.comm.irecv(source=start, tag=opt_tag_lookup('result'))

@@ -7,8 +7,6 @@ import os
 import re
 import logging
 
-from ..utils import weights_from_shapes
-
 class Optimizer(object):
     """Base class for optimization algorithms.
         Currently doesn't do anything."""
