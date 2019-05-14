@@ -80,8 +80,6 @@ from TrainingDriver import add_train_options
 def make_opt_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--label', help='A label to give to the coordinator', default='hOpt')
-
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
@@ -296,7 +294,7 @@ if __name__ == '__main__':
         opt_coordinator = Coordinator(comm_world, num_blocks,
                                                   model_provider.parameters,
                                                   (args.hyper_opt=='genetic'),args.population)
-        opt_coordinator.label = args.label
+        opt_coordinator.label = args.checkpoint
         if args.try_restore: opt_coordinator.load()
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
@@ -312,16 +310,16 @@ if __name__ == '__main__':
         algo = make_algo( args, use_tf, comm_block , validate_every=int(data.count_data()/args.batch ))
  
         block = ProcessBlock(comm_world, comm_block, algo, data, device,
-                                           model_provider,
-                                           args.epochs, train_list, val_list, 
-                                           folds = args.n_fold,
-                                           num_masters = args.n_masters,
-                                           num_process = args.n_processes,
-                                           verbose=args.verbose,
-                                           early_stopping=args.early_stopping,
-                                           target_metric=args.target_metric,
-                                           monitor=args.monitor,
-                                           checkpoint_interval=args.checkpoint_interval)
+                             model_provider,
+                             args.epochs, train_list, val_list, 
+                             folds = args.n_fold,
+                             num_masters = args.n_masters,
+                             num_process = args.n_processes,
+                             verbose=args.verbose,
+                             early_stopping=args.early_stopping,
+                             target_metric=args.target_metric,
+                             monitor=args.monitor,
+                             checkpoint=args.checkpoint,
+                             checkpoint_interval=args.checkpoint_interval)
         if args.try_restore: block.restore = True
-        block.label = args.label
         block.run()

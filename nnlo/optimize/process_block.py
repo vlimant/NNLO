@@ -33,6 +33,7 @@ class ProcessBlock(object):
                  early_stopping=None,
                  target_metric=None,
                  monitor=False,
+                 checkpoint=None,
                  checkpoint_interval=5):
         set_logging_prefix(
             comm_world.Get_rank(),
@@ -58,9 +59,9 @@ class ProcessBlock(object):
         self.early_stopping=early_stopping
         self.target_metric=target_metric
         self.monitor = monitor
-        self.label = None
         self.current_builder = None
         self.restore = False
+        self.checkpoint = checkpoint
         self.checkpoint_interval = checkpoint_interval
 
     def wait_for_model(self):
@@ -96,7 +97,7 @@ class ProcessBlock(object):
                     return result
         else:
             logging.debug("Creating a manager")
-            history_name = '{}-block-{}'.format(self.label if self.label else "",
+            history_name = '{}-block-{}'.format(self.checkpoint if self.checkpoint else "",
                                                              hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest())
             ## need to reset this part to avoid cached values
             self.algo.reset()
@@ -111,15 +112,16 @@ class ProcessBlock(object):
                 self.algo.load(restore_name)
                 self.restore = False
             manager = MPIKFoldManager( self.folds,
-                                          self.comm_block, self.data, self.algo, self.current_builder,
-                                          self.epochs, self.train_list, self.val_list,
-                                          num_masters=self.num_masters,
-                                          num_process=self.num_process,
-                                          verbose=self.verbose,
-                                          early_stopping=self.early_stopping,
-                                          target_metric=self.target_metric,
-                                          monitor=self.monitor,
-                                          checkpoint=history_name, checkpoint_interval=self.checkpoint_interval)
+                                       self.comm_block, self.data, self.algo, self.current_builder,
+                                       self.epochs, self.train_list, self.val_list,
+                                       num_masters=self.num_masters,
+                                       num_process=self.num_process,
+                                       verbose=self.verbose,
+                                       early_stopping=self.early_stopping,
+                                       target_metric=self.target_metric,
+                                       monitor=self.monitor,
+                                       checkpoint=history_name if self.checkpoint else None,
+                                       checkpoint_interval=self.checkpoint_interval)
             manager.train()
             fom = manager.figure_of_merit()
             manager.manager.process.record_details(

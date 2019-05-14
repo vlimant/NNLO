@@ -71,12 +71,14 @@ class Coordinator(object):
         return self.next_params.pop(-1)
 
     def record_details(self, json_name=None):
+        if not self.label: return
         if json_name is None:
             json_name = '{}-coordinator.json'.format(self.label)
         with open(json_name, 'w') as out:
             out.write( json.dumps( self.history, indent=2))
             
     def save(self, fn = None):
+        if not self.label: return
         if fn is None:
             fn = '{}-coordinator.state'.format(self.label)
         self.history.setdefault('save', fn)
@@ -85,6 +87,7 @@ class Coordinator(object):
             pickle.dump( self_dict, state )
 
     def load(self, fn=None):
+        if not self.label: return
         if fn is None:
             fn = '{}-coordinator.state'.format(self.label)
         if os.path.isfile(fn):
