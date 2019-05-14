@@ -147,7 +147,15 @@ def make_loader( args, features_name, labels_name, train_list):
     
     return data
 
-def make_algo( args, comm, validate_every ):
+def make_algo( args, use_tf, comm, validate_every ):
+    args_opt = args.optimizer
+    if use_tf:
+        if not args_opt.endswith("tf"):
+            args_opt = args_opt + 'tf'
+    else:
+        if not args_opt.endswith("torch"):
+            args_opt = args_opt + 'torch'
+            
     if args.mode == 'easgd':
         algo = Algo(None, loss=args.loss, validate_every=validate_every,
                 mode='easgd', sync_every=args.sync_every,
@@ -226,13 +234,9 @@ if __name__ == '__main__':
 
     if use_torch:
         logging.debug("Using pytorch")
-        if not args.optimizer.endswith("torch"):
-            args.optimizer = args.optimizer + 'torch'
         model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
     else:
         logging.debug("Using TensorFlow")
-        if not args.optimizer.endswith("tf"):
-            args.optimizer = args.optimizer + 'tf'
         os.environ['KERAS_BACKEND'] = 'tensorflow'
 
         import_keras()
@@ -257,7 +261,7 @@ if __name__ == '__main__':
     data = make_loader(args, features_name, labels_name, train_list)
 
     # Some input arguments may be ignored depending on chosen algorithm
-    algo = make_algo( args, comm, validate_every=int(data.count_data()/args.batch ))
+    algo = make_algo( args, use_tf, comm, validate_every=int(data.count_data()/args.batch ))
     
     if args.restore:
         algo.load(args.restore)

@@ -309,7 +309,7 @@ if __name__ == '__main__':
         data = make_loader(args, features_name, labels_name, train_list)
 
         from TrainingDriver import make_algo
-        algo = make_algo( args, comm_block , validate_every=int(data.count_data()/args.batch ))
+        algo = make_algo( args, use_tf, comm_block , validate_every=int(data.count_data()/args.batch ))
  
         block = ProcessBlock(comm_world, comm_block, algo, data, device,
                                            model_provider,
