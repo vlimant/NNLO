@@ -2,8 +2,9 @@ import time
 import numpy as np
 import os
 import hashlib
+import logging
 from ..mpi.manager import MPIKFoldManager
-from ..util.logger import get_logger, set_logging_prefix
+from ..util.logger import set_logging_prefix
 from ..util.utils import opt_tag_lookup
 
 class ProcessBlock(object):
@@ -39,8 +40,7 @@ class ProcessBlock(object):
             '-',
             'B'
         )
-        self.logger = get_logger()
-        self.logger.debug("Initializing ProcessBlock")
+        logging.debug("Initializing ProcessBlock")
         self.comm_world = comm_world
         self.comm_block = comm_block
         self.folds = folds
@@ -68,11 +68,11 @@ class ProcessBlock(object):
         Blocks until the parent sends a parameter set
         indicating the model that should be trained.
         """
-        self.logger.debug("Waiting for model params")
+        logging.debug("Waiting for model params")
         self.last_params = self.comm_world.recv(source=0, tag=opt_tag_lookup('params'))
         params = self.last_params
         if params is not None:
-            self.logger.debug("Received parameters {}".format(params))
+            logging.debug("Received parameters {}".format(params))
             model_builder = self.model_provider.builder(*params)
             if model_builder:
                 model_builder.comm = self.comm_block
@@ -92,10 +92,10 @@ class ProcessBlock(object):
             if self.comm_block.Get_rank() == 0:
                     time.sleep(abs(np.random.randn()*30))
                     result = np.random.randn()
-                    self.logger.debug("Finished training with result {}".format(result))
+                    logging.debug("Finished training with result {}".format(result))
                     return result
         else:
-            self.logger.debug("Creating a manager")
+            logging.debug("Creating a manager")
             history_name = '{}-block-{}'.format(self.label if self.label else "",
                                                              hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest())
             ## need to reset this part to avoid cached values
@@ -132,7 +132,7 @@ class ProcessBlock(object):
     def send_result(self, result):
         if self.comm_block.Get_rank() == 0:
             ## only the rank=0 in the block is sending back his fom
-            self.logger.debug("Sending result {} to coordinator".format(result))
+            logging.debug("Sending result {} to coordinator".format(result))
             self.comm_world.isend(result, dest=0, tag=opt_tag_lookup('result')) 
 
     def run(self):
@@ -142,15 +142,15 @@ class ProcessBlock(object):
         """
         while True:
             self.comm_block.Barrier()
-            self.logger.debug("Waiting for model")
+            logging.debug("Waiting for model")
             have_builder = self.wait_for_model()
             if not have_builder:
-                self.logger.debug("Received exit signal from coordinator")
+                logging.debug("Received exit signal from coordinator")
                 break
             
-            self.logger.debug("Will train model")
+            logging.debug("Will train model")
             fom = self.train_model()
-            self.logger.debug("Done training, will send result if needed")
+            logging.debug("Done training, will send result if needed")
             self.send_result(fom)
         self.comm_world.Barrier()
 
