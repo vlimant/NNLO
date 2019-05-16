@@ -93,7 +93,7 @@ def make_opt_parser():
     parser.add_argument('--ga-populations', help='population size for genetic algorithm',
                         default=10, type=int, dest='population')
 
-    parser.add_argument('--try-restore', help='Try to resume from saved state', dest='try_restore', action='store_true')
+    parser.add_argument('--opt-restore', help='Try to resume optimisation from saved state', dest='opt_restore', action='store_true')
 
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
@@ -297,7 +297,7 @@ if __name__ == '__main__':
                                       checkpointing =  args.checkpoint,
                                       label = args.trial_name
         )
-        if args.try_restore: opt_coordinator.load()
+        if args.opt_restore: opt_coordinator.load()
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
         opt_coordinator.record_details()
@@ -324,5 +324,5 @@ if __name__ == '__main__':
                              label = args.trial_name,
                              checkpoint=args.checkpoint,
                              checkpoint_interval=args.checkpoint_interval)
-        if args.try_restore: block.restore = True
+        if args.opt_restore: block.restore = True
         block.run()
