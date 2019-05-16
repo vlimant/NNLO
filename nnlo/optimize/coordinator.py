@@ -82,6 +82,7 @@ class Coordinator(object):
         self.history.setdefault('save', fn)
         with open(fn, 'wb') as state:
             self_dict = dict([(k,v) for (k,v) in self.__dict__.items() if k not in ['comm','req_dict']])
+            logging.debug("Saving on-going parameters {}".format(self_dict.get('block_dict').values()))
             pickle.dump( self_dict, state )
 
     def load(self, fn=None):
@@ -93,8 +94,9 @@ class Coordinator(object):
                 logging.info("Loading the coordinator from {}".format(fn))
                 self_dict = pickle.load(state)
                 active_params = list(self_dict.pop('block_dict').values())
+                logging.debug("Loading active params {}".format(active_params))
                 self.__dict__.update(self_dict)
-                self.next_params[:0] = active_params
+                self.next_params.extend(active_params)
         else:
             logging.warning('Failed to load coordinator state from {}, starting from scratch'.format(fn))
 
@@ -147,7 +149,7 @@ class Coordinator(object):
             logging.info("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
             if self.checkpointing:
-                logging.info("Checkpointing the coordinator")
+                logging.info("Checkpointing the coordinator after run_block")
                 self.save()
 
         ## wait for all running block to finish their processing
