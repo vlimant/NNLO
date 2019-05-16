@@ -12,12 +12,12 @@ import logging
 from mpi4py import MPI
 from time import time,sleep
 
-from mpi_learn.mpi.manager import MPIManager, get_device
-from mpi_learn.train.algo import Algo
-from mpi_learn.train.data import H5Data
-from mpi_learn.train.model import ModelFromJson, ModelTensorFlow
-from mpi_learn.utils import import_keras
-from mpi_learn.logger import initialize_logger
+from nnlo.mpi.manager import MPIManager, get_device
+from nnlo.train.algo import Algo
+from nnlo.train.data import H5Data
+from nnlo.train.model import ModelFromJson, ModelTensorFlow
+from nnlo.util.utils import import_keras
+from nnlo.util.logger import initialize_logger
 import socket
 
 
@@ -134,11 +134,11 @@ if __name__ == '__main__':
 
     if args.tf:
         #model_builder = ModelTensorFlow( comm, filename=args.model_json, device_name=device , weights=model_weights)
-        from mpi_learn.train.GanModel import GANModelBuilder
+        from nnlo.train.GanModel import GANModelBuilder
         model_builder  = GANModelBuilder( comm , device_name=device, tf= True, weights=model_weights)
         logging.info("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
     else:
-        from mpi_learn.train.GanModel import GANModelBuilder
+        from nnlo.train.GanModel import GANModelBuilder
         model_builder  = GANModelBuilder( comm , device_name=device, weights=model_weights)
         logging.info("Process {0} using device {1}".format(comm.Get_rank(),device))
         os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
