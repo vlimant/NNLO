@@ -80,8 +80,6 @@ from TrainingDriver import add_train_options
 def make_opt_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--label', help='A label to give to the coordinator', default='hOpt')
-
     ############################
     parser.add_argument('--block-size', type=int, default=2,
             help='number of MPI processes per block')
@@ -95,7 +93,7 @@ def make_opt_parser():
     parser.add_argument('--ga-populations', help='population size for genetic algorithm',
                         default=10, type=int, dest='population')
 
-    parser.add_argument('--try-restore', help='Try to resume from saved state', dest='try_restore', action='store_true')
+    parser.add_argument('--opt-restore', help='Try to resume optimisation from saved state', dest='opt_restore', action='store_true')
 
     parser.add_argument('--target-objective', type=float, default=None,dest='target_objective',
                         help='A value to reach and stop in the parameter optimisation')
@@ -294,10 +292,12 @@ if __name__ == '__main__':
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = Coordinator(comm_world, num_blocks,
-                                                  model_provider.parameters,
-                                                  (args.hyper_opt=='genetic'),args.population)
-        opt_coordinator.label = args.label
-        if args.try_restore: opt_coordinator.load()
+                                      model_provider.parameters,
+                                      (args.hyper_opt=='genetic'),args.population,
+                                      checkpointing =  args.checkpoint,
+                                      label = args.trial_name
+        )
+        if args.opt_restore: opt_coordinator.load()
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
         opt_coordinator.record_details()
@@ -312,16 +312,17 @@ if __name__ == '__main__':
         algo = make_algo( args, use_tf, comm_block , validate_every=int(data.count_data()/args.batch ))
  
         block = ProcessBlock(comm_world, comm_block, algo, data, device,
-                                           model_provider,
-                                           args.epochs, train_list, val_list, 
-                                           folds = args.n_fold,
-                                           num_masters = args.n_masters,
-                                           num_process = args.n_processes,
-                                           verbose=args.verbose,
-                                           early_stopping=args.early_stopping,
-                                           target_metric=args.target_metric,
-                                           monitor=args.monitor,
-                                           checkpoint_interval=args.checkpoint_interval)
-        if args.try_restore: block.restore = True
-        block.label = args.label
+                             model_provider,
+                             args.epochs, train_list, val_list, 
+                             folds = args.n_fold,
+                             num_masters = args.n_masters,
+                             num_process = args.n_processes,
+                             verbose=args.verbose,
+                             early_stopping=args.early_stopping,
+                             target_metric=args.target_metric,
+                             monitor=args.monitor,
+                             label = args.trial_name,
+                             checkpoint=args.checkpoint,
+                             checkpoint_interval=args.checkpoint_interval)
+        if args.opt_restore: block.restore = True
         block.run()

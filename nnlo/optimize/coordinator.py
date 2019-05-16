@@ -32,7 +32,7 @@ class Coordinator(object):
     """
     
     def __init__(self, comm, num_blocks,
-                 opt_params, ga, populationSize):
+                 opt_params, ga, populationSize, checkpointing, label):
         set_logging_prefix(MPI.COMM_WORLD.Get_rank(), process_type='C')
         logging.debug("Coordinator initializing")
         self.comm = comm
@@ -57,8 +57,8 @@ class Coordinator(object):
         self.ends_cycle = False
         self.target_fom = None
         self.history = {}
-        self.label = None
-
+        self.checkpointing = checkpointing
+        self.label = checkpointing if checkpointing else label
         self.iter = 1
 
     def ask(self, n_iter):
@@ -82,6 +82,7 @@ class Coordinator(object):
         self.history.setdefault('save', fn)
         with open(fn, 'wb') as state:
             self_dict = dict([(k,v) for (k,v) in self.__dict__.items() if k not in ['comm','req_dict']])
+            logging.debug("Saving on-going parameters {}".format(self_dict.get('block_dict').values()))
             pickle.dump( self_dict, state )
 
     def load(self, fn=None):
@@ -92,11 +93,10 @@ class Coordinator(object):
             with open(fn, 'rb') as state:
                 logging.info("Loading the coordinator from {}".format(fn))
                 self_dict = pickle.load(state)
-                self_dict.pop('comm') # Skip MPI objects (they are invalid)
-                self_dict.pop('req_dict')
                 active_params = list(self_dict.pop('block_dict').values())
+                logging.debug("Loading active params {}".format(active_params))
                 self.__dict__.update(self_dict)
-                self.next_params[:0] = active_params
+                self.next_params.extend(active_params)
         else:
             logging.warning('Failed to load coordinator state from {}, starting from scratch'.format(fn))
 
@@ -117,7 +117,9 @@ class Coordinator(object):
                 self.next_params = []
             self.to_tell = []
             ## checkpoint your self
-            self.save()
+            if self.checkpointing:
+                logging.info("Checkpointing the coordinator")                
+                self.save()
             self.history.setdefault('tell',[]).append({'X': [list(map(float,x)) for x in X], 'Y':Y,
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
                                                        'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
@@ -136,6 +138,7 @@ class Coordinator(object):
         if self.ga:
             self.optimizer.setGenerations(num_iterations)
             loopMax *= self.populationSize
+        step = self.iter
         for step in range(self.iter, loopMax + 1):
             next_block = self.wait_for_idle_block(step)
             logging.info("Coordinator iteration {}".format(step))
@@ -145,7 +148,9 @@ class Coordinator(object):
             next_params = self.ask( num_iterations )
             logging.info("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
-            self.save()
+            if self.checkpointing:
+                logging.info("Checkpointing the coordinator after run_block")
+                self.save()
 
         ## wait for all running block to finish their processing
         self.close_blocks(step)
