@@ -170,6 +170,9 @@ class Algo(object):
             self.optimizer.save(fn)
 
     def load(self, fn):
+        if not self.optimizer:
+            logging.info("No state to restore for this algorithm")
+            return
         new_optimizer = self.optimizer.load(fn)
         if new_optimizer is not None:
             logging.info("Restored state from {}".format(fn))

@@ -128,8 +128,10 @@ class MPIProcess(object):
     def save_checkpoint(self):
         if self.checkpoint is not None and self.epoch % self.checkpoint_interval == 0:
             file_name = '{}-{}'.format(self.checkpoint, self.epoch)
+            logging.info("Checkpointing to {}".format( file_name ))
             if self.model:
                 self.model.save(file_name + '.model')
+                
             if self.algo:
                 self.algo.save(file_name + '.algo')
 
