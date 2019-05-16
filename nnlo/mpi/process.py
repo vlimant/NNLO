@@ -66,7 +66,7 @@ class MPIProcess(object):
         self.update = None
         self.stop_training = False
         self.time_step = 0
-        self._short_batches = 0
+        self._short_batches = int(os.environ.get('NNLO_SHORT_BATCHES',0))
         self._is_shadow = (self.process_comm is not None and self.process_comm.Get_rank()!=0)
 
         self.monitor = Monitor() if monitor else None
