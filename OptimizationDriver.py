@@ -292,9 +292,11 @@ if __name__ == '__main__':
     # MPI process 0 coordinates the Bayesian optimization procedure
     if block_num == 0:
         opt_coordinator = Coordinator(comm_world, num_blocks,
-                                                  model_provider.parameters,
-                                                  (args.hyper_opt=='genetic'),args.population)
-        opt_coordinator.label = args.checkpoint
+                                      model_provider.parameters,
+                                      (args.hyper_opt=='genetic'),args.population,
+                                      checkpointing =  args.checkpoint,
+                                      label = args.trial_name
+        )
         if args.try_restore: opt_coordinator.load()
         if args.target_objective: opt_coordinator.target_fom = args.target_objective
         opt_coordinator.run(num_iterations=args.num_iterations)
@@ -319,6 +321,7 @@ if __name__ == '__main__':
                              early_stopping=args.early_stopping,
                              target_metric=args.target_metric,
                              monitor=args.monitor,
+                             label = args.trial_name,
                              checkpoint=args.checkpoint,
                              checkpoint_interval=args.checkpoint_interval)
         if args.try_restore: block.restore = True

@@ -407,6 +407,7 @@ class MPIKFoldManager(MPIManager):
         self.comm_world = comm
         self.comm_fold = None
         self.fold_num = None
+
         if NFolds == 1:
             ## make a regular MPIManager
             self.manager = MPIManager(comm, data, algo, model_builder, num_epochs, train_list,

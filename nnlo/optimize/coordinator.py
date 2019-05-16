@@ -32,7 +32,7 @@ class Coordinator(object):
     """
     
     def __init__(self, comm, num_blocks,
-                 opt_params, ga, populationSize):
+                 opt_params, ga, populationSize, checkpointing, label):
         set_logging_prefix(MPI.COMM_WORLD.Get_rank(), process_type='C')
         logging.debug("Coordinator initializing")
         self.comm = comm
@@ -57,8 +57,8 @@ class Coordinator(object):
         self.ends_cycle = False
         self.target_fom = None
         self.history = {}
-        self.label = None
-
+        self.checkpointing = checkpointing
+        self.label = checkpointing if checkpointing else label
         self.iter = 1
 
     def ask(self, n_iter):
@@ -71,14 +71,12 @@ class Coordinator(object):
         return self.next_params.pop(-1)
 
     def record_details(self, json_name=None):
-        if not self.label: return
         if json_name is None:
             json_name = '{}-coordinator.json'.format(self.label)
         with open(json_name, 'w') as out:
             out.write( json.dumps( self.history, indent=2))
             
     def save(self, fn = None):
-        if not self.label: return
         if fn is None:
             fn = '{}-coordinator.state'.format(self.label)
         self.history.setdefault('save', fn)
@@ -87,7 +85,6 @@ class Coordinator(object):
             pickle.dump( self_dict, state )
 
     def load(self, fn=None):
-        if not self.label: return
         if fn is None:
             fn = '{}-coordinator.state'.format(self.label)
         if os.path.isfile(fn):
@@ -120,7 +117,8 @@ class Coordinator(object):
                 self.next_params = []
             self.to_tell = []
             ## checkpoint your self
-            self.save()
+            if self.checkpointing:
+                self.save()
             self.history.setdefault('tell',[]).append({'X': [list(map(float,x)) for x in X], 'Y':Y,
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
                                                        'fX': list(map(float,self.best_params)), 'fY': self.best_fom})
@@ -148,7 +146,8 @@ class Coordinator(object):
             next_params = self.ask( num_iterations )
             logging.info("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
-            self.save()
+            if self.checkpointing:
+                self.save()
 
         ## wait for all running block to finish their processing
         self.close_blocks(step)

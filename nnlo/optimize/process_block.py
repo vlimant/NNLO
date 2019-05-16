@@ -33,6 +33,7 @@ class ProcessBlock(object):
                  early_stopping=None,
                  target_metric=None,
                  monitor=False,
+                 label = None,
                  checkpoint=None,
                  checkpoint_interval=5):
         set_logging_prefix(
@@ -63,7 +64,8 @@ class ProcessBlock(object):
         self.restore = False
         self.checkpoint = checkpoint
         self.checkpoint_interval = checkpoint_interval
-
+        self.label = checkpoint if checkpoint else label
+        
     def wait_for_model(self):
         """
         Blocks until the parent sends a parameter set
@@ -97,8 +99,8 @@ class ProcessBlock(object):
                     return result
         else:
             logging.debug("Creating a manager")
-            history_name = '{}-block-{}'.format(self.checkpoint if self.checkpoint else "",
-                                                             hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest())
+            history_name = '{}-block-{}'.format(self.label,
+                                                hashlib.md5(str(self.last_params).encode('utf-8')).hexdigest())
             ## need to reset this part to avoid cached values
             self.algo.reset()
             if self.restore:
@@ -110,7 +112,7 @@ class ProcessBlock(object):
                 if os.path.isfile(restore_name + '.model'):
                     self.current_builder.weights = restore_name + '.model'
                 self.algo.load(restore_name)
-                self.restore = False
+                self.restore= False
             manager = MPIKFoldManager( self.folds,
                                        self.comm_block, self.data, self.algo, self.current_builder,
                                        self.epochs, self.train_list, self.val_list,
