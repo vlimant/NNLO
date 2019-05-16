@@ -92,8 +92,6 @@ class Coordinator(object):
             with open(fn, 'rb') as state:
                 logging.info("Loading the coordinator from {}".format(fn))
                 self_dict = pickle.load(state)
-                self_dict.pop('comm') # Skip MPI objects (they are invalid)
-                self_dict.pop('req_dict')
                 active_params = list(self_dict.pop('block_dict').values())
                 self.__dict__.update(self_dict)
                 self.next_params[:0] = active_params
@@ -118,6 +116,7 @@ class Coordinator(object):
             self.to_tell = []
             ## checkpoint your self
             if self.checkpointing:
+                logging.info("Checkpointing the coordinator")                
                 self.save()
             self.history.setdefault('tell',[]).append({'X': [list(map(float,x)) for x in X], 'Y':Y,
                                                        'Hash' : [hashlib.md5(str(x).encode('utf-8')).hexdigest() for x in X],
@@ -137,6 +136,7 @@ class Coordinator(object):
         if self.ga:
             self.optimizer.setGenerations(num_iterations)
             loopMax *= self.populationSize
+        step = self.iter
         for step in range(self.iter, loopMax + 1):
             next_block = self.wait_for_idle_block(step)
             logging.info("Coordinator iteration {}".format(step))
@@ -147,6 +147,7 @@ class Coordinator(object):
             logging.info("Next block: {}, next params {}".format(next_block, next_params))
             self.run_block(next_block, next_params, step)
             if self.checkpointing:
+                logging.info("Checkpointing the coordinator")
                 self.save()
 
         ## wait for all running block to finish their processing
