@@ -127,6 +127,12 @@ Example of running hyper-optimization on mnist model, with 2-fold cross validati
 mpirun -np 13 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 6 --epochs 5 --num-iterations 10 --n-fold 2
 ```
 
+Example of running hyper-optimization on mnist model, with checkpointing every 2 epochs of the masters. And resuming from the last checkpoint
+```
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 5 --num-iterations 10 --checkpoint CP --checkpoint-interval 2
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 5 --num-iterations 10 --checkpoint CP --checkpoint-interval 2 --opt-restore CP
+```
+
 
 FURTHER DOCUMENTATION TO BE ADDED
 
