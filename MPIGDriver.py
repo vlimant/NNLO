@@ -77,6 +77,10 @@ if __name__ == '__main__':
     parser.add_argument('--log-file', default=None, dest='log_file', help='log file to write, in additon to output stream')
     parser.add_argument('--log-level', default='info', dest='log_level', help='log level (debug, info, warn, error)')
 
+    parser.add_argument('--checkpoint', help='Base name of the checkpointing file. If omitted no checkpointing will be done', default=None)
+    parser.add_argument('--checkpoint-interval', help='Number of epochs between checkpoints', default=5, type=int, dest='checkpoint_interval')
+    
+
     args = parser.parse_args()
     model_name = os.path.basename(args.model_json).replace('.json','')
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)    
@@ -178,7 +182,8 @@ if __name__ == '__main__':
                           num_masters=args.masters, num_processes=args.processes,
                           synchronous=args.synchronous, 
                           verbose=args.verbose , monitor=args.monitor,
-                          early_stopping=args.early_stopping,target_metric=args.target_metric )
+                          early_stopping=args.early_stopping,target_metric=args.target_metric ,
+                          checkpoint=args.checkpoint, checkpoint_interval=args.checkpoint_interval)
 
     # Process 0 launches the training procedure
     if comm.Get_rank() == 0:
