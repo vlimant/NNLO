@@ -8,6 +8,7 @@ import argparse
 import json
 import re
 import logging
+import glob
 
 from mpi4py import MPI
 from time import time,sleep
@@ -154,7 +155,7 @@ def make_model_weight(args, use_torch):
         if os.path.isfile(args.restore + '.latest'):
             with open(args.restore + '.latest', 'r') as latest:
                 args.restore = latest.read().splitlines()[-1]
-        if os.path.isfile(args.restore + '.model'):
+        if any([os.path.isfile(ff) for ff in glob.glob('./*'+args.restore + '.model')]):
             if use_torch:
                 args.model = args.restore + '.model'
                 model_weights = args.restore +'.model_w'
