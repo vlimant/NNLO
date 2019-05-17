@@ -154,9 +154,13 @@ def make_model_weight(args, use_torch):
         if os.path.isfile(args.restore + '.latest'):
             with open(args.restore + '.latest', 'r') as latest:
                 args.restore = latest.read().splitlines()[-1]
-        if not use_torch and os.path.isfile(args.restore + '.model'):
-            args.model = args.restore + '.model'
-            model_weights = args.restore + '.model_w'
+        if os.path.isfile(args.restore + '.model'):
+            if use_torch:
+                args.model = args.restore + '.model'
+                model_weights = args.restore +'.model_w'
+            else:
+                model_weights = args.restore + '.model'
+                
     return model_weights
                         
 def make_algo( args, use_tf, comm, validate_every ):
