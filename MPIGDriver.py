@@ -125,7 +125,6 @@ if __name__ == '__main__':
 
     if use_tf:
         from nnlo.train.GanModel import GANModelBuilder
-        print ("using model weights",model_weights)
         model_builder  = GANModelBuilder( comm , device_name=device, tf= True, weights=model_weights)
         logging.info("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
 
