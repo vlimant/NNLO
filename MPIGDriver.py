@@ -92,42 +92,29 @@ if __name__ == '__main__':
 
     comm = MPI.COMM_WORLD.Dup()
 
-    model_weights = None
+    use_tf = args.tf
+    use_torch = not use_tf
+    
+    from TrainingDriver import make_model_weight
+    model_weights = make_model_weight(args, use_torch)
 
-    if args.restore:
-        args.restore = re.sub(r'\.algo$', '', args.restore)
-        if not args.tf:
-            model_weights = args.restore + '.model'
-
-    # Theano is the default backend; use tensorflow if --tf is specified.
-    # In the theano case it is necessary to specify the device before importing.
     device = get_device( comm, args.masters, gpu_limit=args.max_gpus,
                 gpu_for_master=args.master_gpu)
-    hide_device = True
-    if args.tf: 
+    if use_tf:
         backend = 'tensorflow'
         if not args.optimizer.endswith("tf"):
             args.optimizer = args.optimizer + 'tf'
-        if hide_device:
-            os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
-            logging.info('set to device %s %s'%(os.environ['CUDA_VISIBLE_DEVICES'], socket.gethostname()))
-    else:
-        backend = 'theano'
-        os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
+        os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+        logging.info('set to device %s %s'%(os.environ['CUDA_VISIBLE_DEVICES'], socket.gethostname()))
     os.environ['KERAS_BACKEND'] = backend
 
     logging.info(backend)
-    import_keras()
-    import keras.backend as K
-    if args.tf:
+    if use_tf:
+        import_keras()
+        import keras.backend as K
         gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.1, #was 0.0
-            allow_growth = True,
-            visible_device_list = device[-1] if 'gpu' in device else '')
-        if hide_device:
-            gpu_options=K.tf.GPUOptions(
-                            per_process_gpu_memory_fraction=0.0,
-                            allow_growth = True,)
+            per_process_gpu_memory_fraction=0.0,
+            allow_growth = True,)
         K.set_session( K.tf.Session( config=K.tf.ConfigProto(
             allow_soft_placement=True,
             #allow_soft_placement=False,
@@ -136,19 +123,11 @@ if __name__ == '__main__':
             gpu_options=gpu_options
             ) ) )
 
-    if args.tf:
-        #model_builder = ModelTensorFlow( comm, filename=args.model_json, device_name=device , weights=model_weights)
+    if use_tf:
         from nnlo.train.GanModel import GANModelBuilder
+        print ("using model weights",model_weights)
         model_builder  = GANModelBuilder( comm , device_name=device, tf= True, weights=model_weights)
         logging.info("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
-    else:
-        from nnlo.train.GanModel import GANModelBuilder
-        model_builder  = GANModelBuilder( comm , device_name=device, weights=model_weights)
-        logging.info("Process {0} using device {1}".format(comm.Get_rank(),device))
-        os.environ['THEANO_FLAGS'] = "profile=%s,device=%s,floatX=float32" % (args.profile,device.replace('gpu','cuda'))
-        # GPU ops need to be executed synchronously in order for profiling to make sense
-        if args.profile:
-            os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
     data = H5Data( batch_size=args.batch,
