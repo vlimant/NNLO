@@ -322,7 +322,7 @@ if __name__ == '__main__':
                              target_metric=args.target_metric,
                              monitor=args.monitor,
                              label = args.trial_name,
+                             restore = args.opt_restore,
                              checkpoint=args.checkpoint,
                              checkpoint_interval=args.checkpoint_interval)
-        if args.opt_restore: block.restore = True
         block.run()

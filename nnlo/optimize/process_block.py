@@ -34,6 +34,7 @@ class ProcessBlock(object):
                  target_metric=None,
                  monitor=False,
                  label = None,
+                 restore = False,
                  checkpoint=None,
                  checkpoint_interval=5):
         set_logging_prefix(
@@ -61,7 +62,7 @@ class ProcessBlock(object):
         self.target_metric=target_metric
         self.monitor = monitor
         self.current_builder = None
-        self.restore = False
+        self.restore = restore
         self.checkpoint = checkpoint
         self.checkpoint_interval = checkpoint_interval
         self.label = checkpoint if checkpoint else label
