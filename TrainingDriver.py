@@ -147,6 +147,18 @@ def make_loader( args, features_name, labels_name, train_list):
     
     return data
 
+def make_model_weight(args, use_torch):
+    model_weights = None
+    if args.restore:
+        args.restore = re.sub(r'\.algo$', '', args.restore)
+        if os.path.isfile(args.restore + '.latest'):
+            with open(args.restore + '.latest', 'r') as latest:
+                args.restore = latest.read().splitlines()[-1]
+        if not use_torch and os.path.isfile(args.restore + '.model'):
+            args.model = args.restore + '.model'
+            model_weights = args.restore + '.model_w'
+    return model_weights
+                        
 def make_algo( args, use_tf, comm, validate_every ):
     args_opt = args.optimizer
     if use_tf:
@@ -212,19 +224,10 @@ if __name__ == '__main__':
 
     if args.timeline: Timeline.enable()
 
-    model_weights = None
     use_tf = a_backend == 'keras'
     use_torch = not use_tf
-    
-    if args.restore:
-        args.restore = re.sub(r'\.algo$', '', args.restore)
-        if os.path.isfile(args.restore + '.latest'):
-            with open(args.restore + '.latest', 'r') as latest:
-                args.restore = latest.read().splitlines()[-1]
-        if use_torch and os.path.isfile(args.restore + '.model'):
-            model_weights = args.restore + '.model'
-        if use_torch:
-            model_weights += '_w'
+
+    model_weights = make_model_weight(args, use_torch)
 
     # Theano is the default backend; use tensorflow if --tf is specified.
     # In the theano case it is necessary to specify the device before importing.
