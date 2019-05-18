@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+--pro#!/usr/bin/env python
 
 ### This script creates an MPIManager object and launches distributed training.
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     # configuration of network topology
     parser.add_argument('--masters', help='number of master processes', default=1, type=int)
-    parser.add_argument('--processes', help='number of processes per worker', default=1, type=int)
+    parser.add_argument('--n-processes', dest='processes', help='number of processes per worker', default=1, type=int)
     parser.add_argument('--max-gpus', dest='max_gpus', help='max GPUs to use', 
             type=int, default=-1)
     parser.add_argument('--master-gpu',help='master process should get a gpu',
