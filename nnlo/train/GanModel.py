@@ -20,7 +20,7 @@ import socket
 import os
 import glob
 import h5py
-
+import logging
 
 import keras.backend as K
 from keras.models import Model, Sequential
@@ -982,10 +982,11 @@ class GANModelBuilder(ModelBuilder):
     def __init__(self, c, device_name='cpu',tf=False, weights=None):
         ModelBuilder.__init__(self, c )
         self.tf = tf
-        self.weights = weights.split(',') if weights else list([None,None])
+        self.weights = weights# the prefix for the weights
+        #self.weights = weights.split(',') if weights else list([None,None])
         self.device = self.get_device_name(device_name) if self.tf else None
         self.model_parameters={}
-
+        
     def get_backend_name(self):
         return 'tensorflow'
     
@@ -996,8 +997,12 @@ class GANModelBuilder(ModelBuilder):
     def build_model(self, local_session=False):
         m = GANModel(**self.model_parameters)
         if self.weights:
-            for mm,w in zip(m.models, self.weights):
-                if w: mm.load_weights( w )
+            #for mm,w in zip(m.models, self.weights):
+                #if w: mm.load_weights( w )
+            for (im,mm) in enumerate(m.models):
+                w_file = 'm%d_%s'%( im, self.weights )
+                logging.info("Restoring weights from {}".format(w_file))
+                mm.load_weights( w_file )
         return m
 
     def get_device_name(self, device):

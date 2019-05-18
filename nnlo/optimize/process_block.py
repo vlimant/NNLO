@@ -3,6 +3,7 @@ import numpy as np
 import os
 import hashlib
 import logging
+import glob
 from ..mpi.manager import MPIKFoldManager
 from ..util.logger import set_logging_prefix
 from ..util.utils import opt_tag_lookup
@@ -34,6 +35,7 @@ class ProcessBlock(object):
                  target_metric=None,
                  monitor=False,
                  label = None,
+                 restore = False,
                  checkpoint=None,
                  checkpoint_interval=5):
         set_logging_prefix(
@@ -61,7 +63,7 @@ class ProcessBlock(object):
         self.target_metric=target_metric
         self.monitor = monitor
         self.current_builder = None
-        self.restore = False
+        self.restore = restore
         self.checkpoint = checkpoint
         self.checkpoint_interval = checkpoint_interval
         self.label = checkpoint if checkpoint else label
@@ -109,7 +111,7 @@ class ProcessBlock(object):
                         restore_name = latest.read().splitlines()[-1]
                 else:
                     restore_name = history_name
-                if os.path.isfile(restore_name + '.model'):
+                if any([os.path.isfile(ff) for ff in glob.glob('./*' + restore_name + '.model')]):
                     self.current_builder.weights = restore_name + '.model'
                 self.algo.load(restore_name)
                 self.restore= False

@@ -3,6 +3,8 @@ Distributed learning with mpi
 
 Dependencies: [`OpenMPI`](https://www.open-mpi.org/) and [`mpi4py`](http://mpi4py.readthedocs.io/en/stable/) (v. >= 2.0.0), [`keras`](https://keras.io/) (v. >= 1.2.0)
 
+## Examples
+
 Test with the MNIST dataset, with keras+tensorflow
 ```
 git clone https://github.com/vlimant/NNLO.git
@@ -34,6 +36,17 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mni
 Example of training with a fixed target
 ```
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
+```
+
+## GAN Examples (experimental)
+
+Example of training the LCD GAN training, for 5 epochs, and checkpointing at each epoch.
+```
+mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --easgd  --worker-optimizer rmsprop --checkpoint ganGP --checkpoint-int 1
+```
+And restoring from the previous state
+```
+mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --easgd  --worker-optimizer rmsprop --checkpoint ganCP --checkpoint-int 1 --restore ganCP
 ```
 
 ## Using TrainingDriver.py to train your model
@@ -115,7 +128,11 @@ During training, a Worker reads one batch of training data and computes the grad
 
 ![downpour](docs/downpour.png)
 
-### Hyper-parameter Optimization
+## Hyper-parameter Optimization
+
+Description and documentation to be added here.
+
+### Examples 
 
 Example of running hyper-optimization on mnist model
 ```
@@ -130,13 +147,24 @@ mpirun -np 13 --tag-output python3 OptimizationDriver.py --model examples/exampl
 Example of running hyper-optimization on mnist model, with checkpointing every 2 epochs of the masters. And resuming from the last checkpoint
 ```
 mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 5 --num-iterations 10 --checkpoint CP --checkpoint-interval 2
-mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 5 --num-iterations 10 --checkpoint CP --checkpoint-interval 2 --opt-restore CP
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --model examples/example_mnist.py --block-size 3 --epochs 5 --num-iterations 10 --checkpoint CP --checkpoint-interval 2 --opt-restore 
+```
+#
+## GAN Examples
+
+Training the hyperoptimization of an example GAN model
+```
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --example gan --block-size 3 --epochs 3 --num-iterations 10 --checkpoint ganOptCP --checkpoint-int 1
+```
+and restarting the optimization from where it stopped
+```
+mpirun -np 7 --tag-output python3 OptimizationDriver.py --example gan --block-size 3 --epochs 3 --num-iterations 10 --checkpoint ganOptCP --checkpoint-int 1 --opt-restore 
 ```
 
 
-FURTHER DOCUMENTATION TO BE ADDED
 
-### References
+
+# References
 
 [1] Dean et al., Large Scale Distributed Deep Networks.  https://research.google.com/archive/large_deep_networks_nips2012.html.
 
