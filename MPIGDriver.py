@@ -1,4 +1,4 @@
---pro#!/usr/bin/env python
+#!/usr/bin/env python
 
 ### This script creates an MPIManager object and launches distributed training.
 
