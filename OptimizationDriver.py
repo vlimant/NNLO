@@ -242,10 +242,6 @@ if __name__ == '__main__':
     if use_tf:
         import keras.backend as K
         gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.1,
-            allow_growth = True,
-            visible_device_list = device[-1] if 'gpu' in device else '')
-        gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.0,
             allow_growth = True,)        
         K.set_session( K.tf.Session( config=K.tf.ConfigProto(
