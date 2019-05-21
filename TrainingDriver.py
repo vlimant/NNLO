@@ -168,8 +168,7 @@ def make_algo( args, use_tf, comm, validate_every ):
     args_opt = args.optimizer
     if use_tf:
         if not args_opt.endswith("tf"):
-            #args_opt = args_opt + 'tf'
-            pass
+            args_opt = args_opt + 'tf'
     else:
         if not args_opt.endswith("torch"):
             args_opt = args_opt + 'torch'
