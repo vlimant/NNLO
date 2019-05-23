@@ -76,6 +76,7 @@ def check_sanity(args):
     assert args.block_size > 1, "Block size must be at least 2 (master + worker)"
 
 from TrainingDriver import add_train_options
+from TrainingDriver import make_loader, make_train_val_lists, make_features_labels
 
 def make_opt_parser():
     parser = argparse.ArgumentParser()
@@ -132,10 +133,9 @@ if __name__ == '__main__':
             model_provider = BuilderFromFunction( model_fn = module.get_model )
         else:
             model_provider = TorchBuilderFromFunction( model_fn = module.get_model )
-        train_list = module.get_train()
-        val_list = module.get_val()
-        features_name = module.get_features()
-        labels_name = module.get_labels()
+
+        (train_list, val_list) = make_train_val_lists(module, args)
+        (features_name, labels_name) = make_features_labels(module, args)
     elif test == 'topclass':
         ### topclass example
         if not args.torch:
@@ -301,7 +301,6 @@ if __name__ == '__main__':
         logging.debug("Process {} on block {}, rank {}, create a process block".format( comm_world.Get_rank(),
                                                                                  block_num,
                                                                                  comm_block.Get_rank()))
-        from TrainingDriver import make_loader
         data = make_loader(args, features_name, labels_name, train_list)
 
         from TrainingDriver import make_algo

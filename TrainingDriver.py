@@ -196,19 +196,7 @@ def make_algo( args, use_tf, comm, validate_every ):
         logging.info("%s not supported mode", args.mode)
     return algo
 
-if __name__ == '__main__':
-    parser = make_train_parser()
-    args = parser.parse_args()    
-    initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
-
-    a_backend = args.backend
-    if 'torch' in args.model:
-        a_backend = 'torch'
-        
-    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
-    features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
-    labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
-    
+def make_train_val_lists(m_module, args):
     if args.train_data:
         with open(args.train_data) as train_list_file:
             train_list = [ s.strip() for s in train_list_file.readlines() ]
@@ -224,7 +212,25 @@ if __name__ == '__main__':
         val_list = m_module.get_val()
     else:
         logging.info("no validation data provided")
+    return (train_list, val_list) 
+
+def make_features_labels(m_module, args):
+    features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
+    labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
+    return (features_name, labels_name)
+
+if __name__ == '__main__':
+    parser = make_train_parser()
+    args = parser.parse_args()    
+    initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
+
+    a_backend = args.backend
+    if 'torch' in args.model:
+        a_backend = 'torch'
         
+    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
+    (features_name, labels_name) = make_features_labels(m_module, args)
+    (train_list, val_list) = make_train_val_lists(m_module, args)
     comm = MPI.COMM_WORLD.Dup()
 
     if args.timeline: Timeline.enable()
