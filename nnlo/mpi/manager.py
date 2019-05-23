@@ -61,7 +61,7 @@ def get_device(comm, num_masters=1, gpu_limit=-1, gpu_for_master=False):
     
     for inode in range( comm.Get_size()):
         if rank == inode:
-            gpu_list = get_gpu_list()
+            gpu_list = get_gpu_list() if gpu_limit else []
             #if gpu_limit>=0:
             #    gpu_list = gpu_list[:gpu_limit] #limit the number of gpu
             if len(gpu_list) == 0:
