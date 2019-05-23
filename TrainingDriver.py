@@ -266,10 +266,7 @@ if __name__ == '__main__':
             allow_soft_placement=True, log_device_placement=False,
             gpu_options=gpu_options
         ) ) )
-        tf_device = device
-        tf_device = 'gpu0' if 'gpu' in device else ''
-        model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
-        logging.debug("Using device {}".format(model_builder.device))
+        model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
 
 
     data = make_loader(args, features_name, labels_name, train_list)
