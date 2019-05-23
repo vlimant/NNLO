@@ -107,8 +107,7 @@ def add_train_options(parser):
     # configuration of network topology
     parser.add_argument('--n-masters', dest='n_masters', help='number of master processes', default=1, type=int)
     parser.add_argument('--n-processes', dest='n_processes', help='number of processes per worker', default=1, type=int)
-    parser.add_argument('--max-gpus', dest='max_gpus', help='max GPUs to use', 
-            type=int, default=-1)
+    parser.add_argument('--max-gpus', dest='max_gpus', help='max GPUs to use', type=int, default=1)
 
 
     # configuration of training process

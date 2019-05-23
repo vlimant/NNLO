@@ -140,7 +140,8 @@ if __name__ == '__main__':
         MPI.COMM_WORLD.Abort()
 
     block_num = get_block_num(comm_world, args.block_size)
-    device = get_device(comm_world, num_blocks)
+    device = get_device(comm_world, num_blocks,
+                        gpu_limit=args.max_gpus)
     logging.info("Process {} using device {}".format(comm_world.Get_rank(), device))
 
     os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
