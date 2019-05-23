@@ -27,17 +27,6 @@ def opt_tag_lookup(tag):
             }
     return tags.get(tag, 0)
 
-def get_device_name(dev_type, dev_num, backend='theano'):
-    """Returns cpu/gpu device name formatted for
-    theano or keras, as specified by the backend argument"""
-    if backend == 'tensorflow':
-        return "/%s:%d" % (dev_type, dev_num)
-    else:
-        if dev_type == 'cpu':
-            return 'cpu'
-        else:
-            return dev_type+str(dev_num)
-
 def import_keras(tries=10):
     """There is an issue when multiple processes import Keras simultaneously --
         the file .keras/keras.json is sometimes not read correctly.  
