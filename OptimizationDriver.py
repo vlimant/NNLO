@@ -125,7 +125,38 @@ if __name__ == '__main__':
         a_backend = 'torch'
     use_tf = a_backend == 'keras'
     use_torch = not use_tf
-    
+
+        ##starting the configuration of the processes
+    logging.info("Initializing...")
+    comm_world = MPI.COMM_WORLD.Dup()
+    ## consistency check to make sure everything is appropriate
+    num_blocks, left_over = divmod( (comm_world.Get_size()-1), args.block_size)
+    if left_over:
+        logging.warning("The last block is going to be made of {} nodes, make inconsistent block size {}".format( left_over,
+                                                                                                         args.block_size))
+        num_blocks += 1 ## to accoun for the last block
+        if left_over<2:
+            logging.warning("The last block is going to be too small for mpi_learn, with no workers")
+        MPI.COMM_WORLD.Abort()
+
+    block_num = get_block_num(comm_world, args.block_size)
+    device = get_device(comm_world, num_blocks)
+    logging.info("Process {} using device {}".format(comm_world.Get_rank(), device))
+
+    os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
+    logging.info('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
+
+    if use_tf:
+        import keras.backend as K
+        gpu_options=K.tf.GPUOptions(
+            per_process_gpu_memory_fraction=0.0,
+            allow_growth = True,)        
+        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=True,
+            gpu_options=gpu_options
+        ) ) )
+
+        
     if model_source is not None:
         ## provide the model details here
         module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None])
@@ -216,43 +247,13 @@ if __name__ == '__main__':
         labels_name='y'
 
 
-    ##starting the configuration of the processes
-
-    logging.info("Initializing...")
-    comm_world = MPI.COMM_WORLD.Dup()
-    ## consistency check to make sure everything is appropriate
-    num_blocks, left_over = divmod( (comm_world.Get_size()-1), args.block_size)
-    if left_over:
-        logging.warning("The last block is going to be made of {} nodes, make inconsistent block size {}".format( left_over,
-                                                                                                         args.block_size))
-        num_blocks += 1 ## to accoun for the last block
-        if left_over<2:
-            logging.warning("The last block is going to be too small for mpi_learn, with no workers")
-        MPI.COMM_WORLD.Abort()
 
 
-    block_num = get_block_num(comm_world, args.block_size)
-    device = get_device(comm_world, num_blocks)
-
-
-    
-    os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
-    logging.debug('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
-
-    if use_tf:
-        import keras.backend as K
-        gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)        
-        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-            allow_soft_placement=True, log_device_placement=False,
-            gpu_options=gpu_options
-        ) ) )
-    else:
+    if use_torch:
         if 'gpu' in device:
             model_provider.gpus=1
             
-    logging.debug("Process {} using device {}".format(comm_world.Get_rank(), device))
+
     comm_block = comm_world.Split(block_num)
     logging.debug("Process {} sees {} blocks, has block number {}, and rank {} in that block".format(comm_world.Get_rank(),
                                                                                               num_blocks,
