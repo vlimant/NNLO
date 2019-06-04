@@ -125,8 +125,7 @@ if __name__ == '__main__':
 
     if use_tf:
         from nnlo.train.GanModel import GANModelBuilder
-        model_builder  = GANModelBuilder( comm , device_name=device, tf= True, weights=model_weights)
-        logging.info("Process {0} using device {1}".format(comm.Get_rank(), model_builder.device))
+        model_builder  = GANModelBuilder( comm , tf= True, weights=model_weights)
 
 
     data = H5Data( batch_size=args.batch,

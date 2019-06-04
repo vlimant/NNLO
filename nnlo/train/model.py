@@ -1,6 +1,6 @@
 ### ModelBuilder class and associated helper methods
 
-from nnlo.util.utils import load_model, get_device_name
+from nnlo.util.utils import load_model
 from .optimizer import OptimizerBuilder
 import numpy as np
 import copy
@@ -373,10 +373,6 @@ class ModelBuilder(object):
         """
         self.comm = comm
 
-    def get_device_name(self, device):
-        """Should return a device name under a desired convention"""
-        return device
-
     def build_model(self):
         """Should return an uncompiled Keras model."""
         raise NotImplementedError
@@ -417,10 +413,9 @@ class ModelTensorFlow(ModelBuilder):
         Attributes:
             source: path to JSON file specifying model architecture
                     or Keras model to be cloned
-            device: name of the device to use (ex: "/gpu:2")
     """
 
-    def __init__(self, comm, source, device_name='cpu', 
+    def __init__(self, comm, source,
             custom_objects={}, weights=None):
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
@@ -435,43 +430,22 @@ class ModelTensorFlow(ModelBuilder):
             self.model = source
         self.weights = weights
         self.custom_objects = custom_objects
-        self.device = self.get_device_name(device_name)
         super(ModelTensorFlow, self).__init__(comm)
 
-    def get_device_name(self, device):
-        """Returns a TF-style device identifier for the specified device.
-            input: 'cpu' for CPU and 'gpuN' for the Nth GPU on the host"""
-        if device == 'cpu':
-            dev_num = 0
-            dev_type = 'cpu'
-        elif device.startswith('gpu'):
-            try:
-                dev_num = int(device[3:])
-                dev_type = 'gpu'
-            except ValueError:
-                logging.warning("GPU number could not be parsed from {}; using CPU".format(device))
-                dev_num = 0
-                dev_type = 'cpu'
-        else:
-            logging.warning("Please specify 'cpu' or 'gpuN' for device name; using CPU")
-            dev_num = 0
-            dev_type = 'cpu'
-        return get_device_name(dev_type, dev_num, backend='tensorflow')
 
     def build_model_aux(self):
         import keras.backend as K
 
-        with K.tf.device(self.device):
-            if type(self.filename) == list:
-                models = []
-                self.weights = self.weights.split(',') if self.weights else [None]*len(self.filename)
-                for fn,w in zip(self.filename, self.weights):
-                    models.append(load_model(filename=fn, weights_file=w))
-                return MPIModel(models = models)
-            else:
-                model = load_model(filename=self.filename, model=self.model,
-                                custom_objects=self.custom_objects, weights_file=self.weights)
-                return MPIModel(model = model)
+        if type(self.filename) == list:
+            models = []
+            self.weights = self.weights.split(',') if self.weights else [None]*len(self.filename)
+            for fn,w in zip(self.filename, self.weights):
+                models.append(load_model(filename=fn, weights_file=w))
+            return MPIModel(models = models)
+        else:
+            model = load_model(filename=self.filename, model=self.model,
+                               custom_objects=self.custom_objects, weights_file=self.weights)
+        return MPIModel(model = model)
 
 
     def build_model(self, local_session = True):

@@ -107,8 +107,7 @@ def add_train_options(parser):
     # configuration of network topology
     parser.add_argument('--n-masters', dest='n_masters', help='number of master processes', default=1, type=int)
     parser.add_argument('--n-processes', dest='n_processes', help='number of processes per worker', default=1, type=int)
-    parser.add_argument('--max-gpus', dest='max_gpus', help='max GPUs to use', 
-            type=int, default=-1)
+    parser.add_argument('--max-gpus', dest='max_gpus', help='max GPUs to use', type=int, default=1)
 
 
     # configuration of training process
@@ -168,8 +167,7 @@ def make_algo( args, use_tf, comm, validate_every ):
     args_opt = args.optimizer
     if use_tf:
         if not args_opt.endswith("tf"):
-            #args_opt = args_opt + 'tf'
-            pass
+            args_opt = args_opt + 'tf'
     else:
         if not args_opt.endswith("torch"):
             args_opt = args_opt + 'torch'
@@ -267,10 +265,7 @@ if __name__ == '__main__':
             allow_soft_placement=True, log_device_placement=False,
             gpu_options=gpu_options
         ) ) )
-        tf_device = device
-        tf_device = 'gpu0' if 'gpu' in device else ''
-        model_builder = ModelTensorFlow( comm, source=args.model, device_name=tf_device , weights=model_weights)
-        logging.debug("Using device {}".format(model_builder.device))
+        model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
 
 
     data = make_loader(args, features_name, labels_name, train_list)

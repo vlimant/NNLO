@@ -30,7 +30,6 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import (UpSampling3D, Conv3D, ZeroPadding3D,
                                         AveragePooling3D)
 
-from ..util.utils import get_device_name
 from ..train.model import MPIModel, ModelBuilder
 from .optimizer import OptimizerBuilder
 
@@ -979,12 +978,10 @@ class GANModel(MPIModel):
 
 
 class GANModelBuilder(ModelBuilder):
-    def __init__(self, c, device_name='cpu',tf=False, weights=None):
+    def __init__(self, c, tf=False, weights=None):
         ModelBuilder.__init__(self, c )
         self.tf = tf
         self.weights = weights# the prefix for the weights
-        #self.weights = weights.split(',') if weights else list([None,None])
-        self.device = self.get_device_name(device_name) if self.tf else None
         self.model_parameters={}
         
     def get_backend_name(self):
@@ -1004,26 +1001,6 @@ class GANModelBuilder(ModelBuilder):
                 logging.info("Restoring weights from {}".format(w_file))
                 mm.load_weights( w_file )
         return m
-
-    def get_device_name(self, device):
-        """Returns a TF-style device identifier for the specified device.
-            input: 'cpu' for CPU and 'gpuN' for the Nth GPU on the host"""
-        if device == 'cpu':
-            dev_num = 0
-            dev_type = 'cpu'
-        elif device.startswith('gpu'):
-            try:
-                dev_num = int(device[3:])
-                dev_type = 'gpu'
-            except ValueError:
-                print ("GPU number could not be parsed from {}; using CPU".format(device))
-                dev_num = 0
-                dev_type = 'cpu'
-        else:
-            print ("Please specify 'cpu' or 'gpuN' for device name")
-            dev_num = 0
-            dev_type = 'cpu'
-        return get_device_name(dev_type, dev_num, backend='tensorflow')
 
 class GANBuilder(object):
     def __init__(self, parameters):

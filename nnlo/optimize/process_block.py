@@ -81,7 +81,6 @@ class ProcessBlock(object):
             model_builder = self.model_provider.builder(*params)
             if model_builder:
                 model_builder.comm = self.comm_block
-                model_builder.device = model_builder.get_device_name(self.device)
                 self.current_builder = model_builder
             else:
                 self.current_builder = None

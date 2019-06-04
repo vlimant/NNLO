@@ -61,19 +61,19 @@ def get_device(comm, num_masters=1, gpu_limit=-1, gpu_for_master=False):
     
     for inode in range( comm.Get_size()):
         if rank == inode:
-            gpu_list = get_gpu_list()
-            if gpu_limit>=0:
-                gpu_list = gpu_list[:gpu_limit] #limit the number of gpu
+            gpu_list = get_gpu_list() if gpu_limit else []
+            #if gpu_limit>=0:
+            #    gpu_list = gpu_list[:gpu_limit] #limit the number of gpu
             if len(gpu_list) == 0:
                 logging.info("No free GPU available. Using CPU instead.")
                 dev = 'cpu'
             elif worker_id<0:
                 ## alone on that machine
-                logging.info("Alone on the node and taking the last gpu")
                 dev = 'gpu%d' % (gpu_list[-1])
+                logging.info("Alone on the node and taking the last gpu {}".format(dev))
             else:
-                logging.debug("Sharing a node and taking on the gpu")
                 dev = 'gpu%d' % (gpu_list[worker_id%len(gpu_list)])
+                logging.info("Sharing a node and taking on the gpu {}".format(dev))                
             logging.debug("rank %d can have %s",rank,dev)
         comm.Barrier()
     return dev
