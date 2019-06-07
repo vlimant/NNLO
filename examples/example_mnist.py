@@ -14,6 +14,8 @@ def get_all():
         all_list = glob.glob('/ccs/proj/csc291/DATA/mnist/*.h5')
     else:
         all_list = glob.glob('/bigdata/shared/mnist/*.h5')
+    if not all_list:
+        all_list = glob.glob('mnist_*.h5')
     return all_list
     
 def get_train():

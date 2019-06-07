@@ -12,6 +12,7 @@ cd NNLO
 ```
 Example with mnist provided in a python file
 ```
+python3 models/get_mnist.py
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3
 mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist_torch.py --loss categorical_crossentropy --epochs 3
 ```
@@ -42,11 +43,11 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mni
 
 Example of training the LCD GAN training, for 5 epochs, and checkpointing at each epoch.
 ```
-mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --easgd  --worker-optimizer rmsprop --checkpoint ganGP --checkpoint-int 1
+mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --mode easgd  --worker-optimizer rmsprop --checkpoint ganGP --checkpoint-int 1
 ```
 And restoring from the previous state
 ```
-mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --easgd  --worker-optimizer rmsprop --checkpoint ganCP --checkpoint-int 1 --restore ganCP
+mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --mode easgd  --worker-optimizer rmsprop --checkpoint ganCP --checkpoint-int 1 --restore ganCP
 ```
 
 ## Using TrainingDriver.py to train your model
