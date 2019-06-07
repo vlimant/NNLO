@@ -41,8 +41,9 @@ mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mni
 
 ## GAN Examples (experimental)
 
-Example of training the LCD GAN training, for 5 epochs, and checkpointing at each epoch.
+Example of training the LCD GAN training, for 5 epochs, and checkpointing at each epoch (note that the input data is located on private servers, please ask us to get access to it)
 ```
+python models/get_3d.py
 mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d.list --loss dummy --epochs 5 --master-gpu --features-name X --labels-name y --tf --mode easgd  --worker-optimizer rmsprop --checkpoint ganGP --checkpoint-int 1
 ```
 And restoring from the previous state
