@@ -199,10 +199,11 @@ class H5Data(Data):
     """
     def __init__(self, batch_size,
                  cache=None,
+                 copy_command=None,
                  preloading=0,
                  features_name='features', labels_name='labels'):
         """Initializes and stores names of feature and label datasets"""
-        super(H5Data, self).__init__(batch_size,cache)
+        super(H5Data, self).__init__(batch_size,cache,copy_command)
         self.features_name = features_name
         self.labels_name = labels_name
         ## initialize the data-preloader

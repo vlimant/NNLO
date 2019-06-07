@@ -59,6 +59,7 @@ def add_downpour_options(parser):
 def add_loader_options(parser):
     parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
     parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
+    parser.add_argument('--copy-command', help='Specific command line to copy the data into the cache. Expect a string with two {} first is the source (from input file list), second is the bare file name at destination. Like "cp {} {}"', default=None, dest='copy_command')
 
 
 def add_target_options(parser):
@@ -137,9 +138,10 @@ def add_train_options(parser):
 def make_loader( args, features_name, labels_name, train_list):
     data = H5Data( batch_size=args.batch,
                    cache = args.caching_dir,
+                   copy_command = args.copy_command,                   
                    preloading = args.data_preload,
                    features_name=features_name,
-                   labels_name=labels_name
+                   labels_name=labels_name,
     )
     # We initialize the Data object with the training data list
     # so that we can use it to count the number of training examples
