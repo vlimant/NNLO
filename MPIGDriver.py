@@ -67,7 +67,9 @@ if __name__ == '__main__':
             dest='worker_optimizer_params', default='{}')
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
-    parser.add_argument('--easgd',help='use Elastic Averaging SGD',action='store_true')
+    parser.add_argument('--mode',help='Mode of operation.'
+                        'One of "downpour" (Downpour), "easgd" (Elastic Averaging SGD) or "gem" (Gradient Energy Matching)',default='downpour',choices=['downpour','easgd','gem'])
+
     parser.add_argument('--elastic-force',help='beta parameter for EASGD',type=float,default=0.9)
     parser.add_argument('--elastic-lr',help='worker SGD learning rate for EASGD',
             type=float, default=1.0, dest='elastic_lr')
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     use_tf = args.tf
     use_torch = not use_tf
     
-    from TrainingDriver import make_model_weight
+    from TrainingDriver import make_model_weight, make_algo, make_loader
     model_weights = make_model_weight(args, use_torch)
 
     device = get_device( comm, args.masters, gpu_limit=args.max_gpus,
@@ -128,28 +130,9 @@ if __name__ == '__main__':
         model_builder  = GANModelBuilder( comm , tf= True, weights=model_weights)
 
 
-    data = H5Data( batch_size=args.batch,
-                   cache = args.caching_dir,
-                   preloading = args.data_preload,
-                   features_name=args.features_name, labels_name=args.labels_name )
-    # We initialize the Data object with the training data list
-    # so that we can use it to count the number of training examples
-    data.set_file_names( train_list )
-    validate_every = int(data.count_data()/args.batch )
+    data = make_loader(args, args.features_name, args.labels_name, train_list)
+    algo = make_algo( args, use_tf, comm, validate_every=int(data.count_data()/args.batch ))
 
-    # Some input arguments may be ignored depending on chosen algorithm
-    if args.easgd:
-        algo = Algo(None, loss=args.loss, validate_every=validate_every,
-                mode='easgd', sync_every=args.sync_every,
-                worker_optimizer=args.worker_optimizer,
-                worker_optimizer_params=args.worker_optimizer_params,
-                elastic_force=args.elastic_force/(comm.Get_size()-1),
-                elastic_lr=args.elastic_lr, 
-                elastic_momentum=args.elastic_momentum) 
-    else:
-        algo = Algo(args.optimizer, loss=args.loss, validate_every=validate_every,
-                sync_every=args.sync_every, worker_optimizer=args.worker_optimizer,
-                worker_optimizer_params=args.worker_optimizer_params) 
     if args.restore:
         algo.load(args.restore)
 
