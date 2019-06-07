@@ -320,7 +320,7 @@ class MPIManager(object):
                                                self.comm_instance.Get_rank() if self.comm_instance else "N/A")
                )
         if not files_for_this_worker:
-            logging.debug("There are no files for training, this is a fatal issue")
+            logging.error("There are no files for training, this is a fatal issue")
             MPI.COMM_WORLD.Abort()
             
         for f in files_for_this_worker:

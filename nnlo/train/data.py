@@ -108,7 +108,8 @@ class Data(object):
             self.file_names = relocated
         else:
             self.file_names = file_names
-            
+
+        self.file_names = list(filter(None, self.file_names))
         if self.fpl:
             self.fpl.files_list = self.file_names
 
