@@ -177,7 +177,7 @@ def make_algo( args, use_tf, comm, validate_every ):
                 mode='easgd', sync_every=args.sync_every,
                 worker_optimizer=args.worker_optimizer,
                 worker_optimizer_params=args.worker_optimizer_params,
-                elastic_force=args.elastic_force/(min(1,comm.Get_size()-1)),
+                elastic_force=args.elastic_force/(max(1,comm.Get_size()-1)),
                 elastic_lr=args.elastic_lr, 
                 elastic_momentum=args.elastic_momentum) 
     elif args.mode == 'gem':
