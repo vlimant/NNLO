@@ -87,8 +87,8 @@ class Data(object):
         if self.caching_directory:
             goes_to = self.caching_directory
             goes_to += str(os.getpid())
-            os.system('mkdir %s '%goes_to)
-            os.system('rm %s/* -f'%goes_to) ## clean first if anything
+            os.system('mkdir -p %s '%goes_to)
+            #os.system('rm %s/* -f'%goes_to) ## clean first if anything
             for fn in file_names:
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
