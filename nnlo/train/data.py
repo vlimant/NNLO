@@ -65,14 +65,17 @@ class Data(object):
           batch_size: size of training batches
     """
 
-    def __init__(self, batch_size, cache=None, s3=None):
+    def __init__(self, batch_size, cache=None, copy_command=None):
         """Stores the batch size and the names of the data files to be read.
             Params:
               batch_size: batch size for training
         """
         self.batch_size = batch_size
-        self.caching_directory = cache if cache else os.environ.get('GANINMEM','')
-        self.use_s3 = s3 if s3 else os.environ.get('USES3','')
+        self.caching_directory = cache if cache else os.environ.get('DATA_CACHE','')
+        self.copy_command = copy_command if copy_command else os.environ.get('DATA_COPY_COMMAND','cp {} {}')
+        ## for regular copy it is "cp {} {}"
+        ## for s3 it should be "s3cmd get s3://gan-bucket/{} {}"
+        ## for xrootd it should be "xrdcp root://cms-xrd-global.cern.ch/{} {}", assuming a valid proxy
         self.fpl = None
 
     def set_caching_directory(self, cache):
@@ -84,24 +87,18 @@ class Data(object):
         if self.caching_directory:
             goes_to = self.caching_directory
             goes_to += str(os.getpid())
-            os.system('mkdir %s '%goes_to)
-            os.system('rm %s/* -f'%goes_to) ## clean first if anything
+            os.system('mkdir -p %s '%goes_to)
+            #os.system('rm %s/* -f'%goes_to) ## clean first if anything
             for fn in file_names:
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
                     logging.info("copying %s to %s", fn , relocate)
-                    if (self.use_s3):
-                       if os.system('s3cmd get s3://gan-bucket/%s %s'%( fn ,relocate))==0:
-                          relocated.append( relocate )
-                       else:
-                          logging.info("was unable to copy the file s3://ganbucket/%s to %s",fn,relocate)
-                          relocated.append( fn ) ## use the initial one
-                    else:   
-                       if os.system('cp %s %s'%( fn ,relocate))==0:
-                          relocated.append( relocate )
-                       else:
-                          logging.info("was enable to copy the file %s to %s",fn,relocate)
-                          relocated.append( fn ) ## use the initial one
+                    cmd = self.copy_command.format( fn, relocate )
+                    if os.system(cmd)==0:
+                        relocated.append( relocate )
+                    else:
+                        logging.error("was unable to copy the file with {}".format( cmd ))
+                        relocated.append( fn ) ## use the initial one
                 else:
                     relocated.append( relocate )
                         
@@ -194,10 +191,11 @@ class H5Data(Data):
     """
     def __init__(self, batch_size,
                  cache=None,
+                 copy_command=None,
                  preloading=0,
                  features_name='features', labels_name='labels'):
         """Initializes and stores names of feature and label datasets"""
-        super(H5Data, self).__init__(batch_size,cache)
+        super(H5Data, self).__init__(batch_size,cache,copy_command)
         self.features_name = features_name
         self.labels_name = labels_name
         ## initialize the data-preloader

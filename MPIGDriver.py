@@ -22,6 +22,7 @@ import socket
 
 
 if __name__ == '__main__':
+    from TrainingDriver import add_loader_options
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose',help='display metrics for each training batch',action='store_true')
     parser.add_argument('--profile',help='profile theano code',action='store_true')
@@ -41,8 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--labels-name', help='name of HDF5 dataset with output labels',
             default='labels', dest='labels_name')
     parser.add_argument('--batch', help='batch size', default=100, type=int)
-    parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
-    parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
+    add_loader_options(parser)
 
     # configuration of network topology
     parser.add_argument('--masters', help='number of master processes', default=1, type=int)
