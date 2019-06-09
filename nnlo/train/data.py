@@ -72,7 +72,7 @@ class Data(object):
         """
         self.batch_size = batch_size
         self.caching_directory = cache if cache else os.environ.get('DATA_CACHE','')
-        self.copy_command = copy_command if copy_command else os.environ.get('DATA_COPY_COMMAND','')
+        self.copy_command = copy_command if copy_command else os.environ.get('DATA_COPY_COMMAND','cp {} {}')
         ## for regular copy it is "cp {} {}"
         ## for s3 it should be "s3cmd get s3://gan-bucket/{} {}"
         ## for xrootd it should be "xrdcp root://cms-xrd-global.cern.ch/{} {}", assuming a valid proxy
@@ -93,20 +93,12 @@ class Data(object):
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
                     logging.info("copying %s to %s", fn , relocate)
-                    if self.copy_command:
-                        cmd = self.copy_command.format( fn, relocate )
-                        if os.system(cmd)==0:
-                            relocated.append( relocate )
-                        else:
-                            logging.error("was unable to copy the file with {}".format( cmd ))
-                            relocated.append( fn ) ## use the initial one
+                    cmd = self.copy_command.format( fn, relocate )
+                    if os.system(cmd)==0:
+                        relocated.append( relocate )
                     else:
-                        ## admitedly, this is redundant, as copy_command could default to "cp {} {}"
-                        if os.system('cp %s %s'%( fn ,relocate))==0:
-                            relocated.append( relocate )
-                        else:
-                            logging.info("was enable to copy the file {} to {}".format(fn,relocate))
-                            relocated.append( fn ) ## use the initial one
+                        logging.error("was unable to copy the file with {}".format( cmd ))
+                        relocated.append( fn ) ## use the initial one
                 else:
                     relocated.append( relocate )
                         
