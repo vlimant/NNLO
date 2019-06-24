@@ -41,6 +41,7 @@ def get_device(comm, num_masters=1, gpu_limit=-1, gpu_for_master=False):
         #unused_gpu = filter(lambda x: x[1] < 100.0, zip(ids, used))
         free = list(map(lambda gpu: float(gpu.entry['memory.total'])-float(gpu.entry['memory.used']), stats))
         unused_gpu = list(filter(lambda x: x[1]  > mem_lim, zip(ids, free)))
+        unused_gpu = sorted(unused_gpu, key = lambda o : o[1], reverse=True)
         return [x[0] for x in unused_gpu]
 
     # Get the ranks of the other processes that share the same host
