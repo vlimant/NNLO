@@ -284,6 +284,7 @@ class MPITModel(MPIModel):
     def _convert_to_tensor(self, data ):
         import torch
         return torch.from_numpy(data)
+        #return torch.as_tensor( data, dtype=torch.DoubleTensor)
         #if hasattr(data, 'keys'):
         #    out = [torch.from_numpy(data[key]) for key in sorted(data.keys())]
         #else:
