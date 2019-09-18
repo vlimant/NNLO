@@ -500,7 +500,17 @@ class ModelPytorch(ModelBuilder):
         if self.filename is not None:
             model = torch.load(self.filename)
         elif self.model is not None:
-            model = copy.deepcopy(self.model)
+            if True:
+                model = copy.deepcopy(self.model)
+            else:
+                #print ("cloning in torch")
+                #model = type(self.model)()
+                #model.load_state_dict(self.model.state_dict())
+                model = self.model
+                ##import pickle
+                ##print ("model to be pickled")
+                ##model = pickle.loads(pickle.dumps(self.model))
+            print ("model was cloned")
         if self.weights:
             wd = torch.load(self.weights)
             model.load_state_dict(wd)
