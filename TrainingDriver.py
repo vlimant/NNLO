@@ -197,6 +197,7 @@ def make_algo( args, use_tf, comm, validate_every ):
     return algo
 
 def make_train_val_lists(m_module, args):
+    train_list = val_list = []
     if args.train_data:
         with open(args.train_data) as train_list_file:
             train_list = [ s.strip() for s in train_list_file.readlines() ]
@@ -212,6 +213,11 @@ def make_train_val_lists(m_module, args):
         val_list = m_module.get_val()
     else:
         logging.info("no validation data provided")
+
+    if not train_list:
+        logging.error("No training data provided")
+    if not val_list:
+        logging.error("No validation data provided")
     return (train_list, val_list) 
 
 def make_features_labels(m_module, args):
