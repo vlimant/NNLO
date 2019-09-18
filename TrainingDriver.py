@@ -268,11 +268,23 @@ if __name__ == '__main__':
             visible_device_list = device[-1] if 'gpu' in device else '')
         gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)        
-        K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-            allow_soft_placement=True, log_device_placement=False,
-            gpu_options=gpu_options
-        ) ) )
+            allow_growth = True,)     
+        #NTHREADS=(2,1)
+        NTHREADS=None
+        if NTHREADS is None:
+            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+                allow_soft_placement=True, log_device_placement=False,
+                gpu_options=gpu_options
+            ) ) )
+        else:
+            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+                allow_soft_placement=True, log_device_placement=False,
+                gpu_options=gpu_options,
+                intra_op_parallelism_threads=NTHREADS[0], 
+                inter_op_parallelism_threads=NTHREADS[1],
+            ) ) )
+        
+
         model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
 
 
