@@ -31,7 +31,7 @@ def get_val():
     return val_list
 
 def get_features():
-    return 'features'
+    return ('features', lambda x: x)
 
 def get_labels():
     return 'labels'

@@ -213,8 +213,25 @@ class H5Data(Data):
             h5_file = self.fpl.getFile( in_file_name )
         else:
             h5_file = h5py.File( in_file_name, 'r' )
-        X = self.load_hdf5_data( h5_file[self.features_name] )
-        Y = self.load_hdf5_data( h5_file[self.labels_name] )
+        if type(self.features_name) == tuple:
+            ## there is a data adaptor
+            feature_name, feature_adaptor = self.features_name
+        else:
+            feature_adaptor = None
+            feature_name = self.features_name
+        if type(self.labels_name) == tuple:
+            ## there is a data adaptor
+            label_name, label_adaptor = self.labels_name
+        else:
+            label_adaptor = None
+            label_name = self.labels_name
+        
+        X = self.load_hdf5_data( h5_file[feature_name] )
+        Y = self.load_hdf5_data( h5_file[label_name] )
+        if feature_adaptor is not None:
+            X = feature_adaptor(X)
+        if label_adaptor is not None:
+            Y = label_adaptor(Y)
         if self.fpl:
             self.fpl.closeFile( in_file_name )
         else:
@@ -238,7 +255,11 @@ class H5Data(Data):
         num_data = 0
         for in_file_name in self.file_names:
             h5_file = h5py.File( in_file_name, 'r' )
-            X = h5_file[self.features_name]
+            if type(self.features_name) == tuple:
+                feature_name = self.features_name[0]
+            else:
+                feature_name = self.features_name
+            X = h5_file[feature_name]
             if hasattr(X, 'keys'):
                 num_data += len(X[ X.keys()[0] ])
             else:
