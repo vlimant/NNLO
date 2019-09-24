@@ -156,7 +156,7 @@ def get_all():
     elif 'titan' in host:
         all_list = glob.glob('/ccs/proj/csc291/DATA/hls-fml/NEWDATA/jetImage*_150p_*.h5')
     else:
-        all_list = glob.glob('/bigdata/shared/hls-fml/NEWDATA/jetImage*_150p_*JEDI.h5')
+        all_list = glob.glob('/storage/group/gpu/bigdata/shared/hls-fml/NEWDATA/jetImage*_150p_*JEDI.h5')
     #self.X =  np.array(self.f.get('jetConstituentList'))
     #self.y = np.array(self.f.get('jets')[0:,-6:-1])
     return all_list
