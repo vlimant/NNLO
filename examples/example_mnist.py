@@ -31,6 +31,7 @@ def get_val():
     return val_list
 
 def get_features():
+    #return ('features', lambda x: x) ##example of data adaptor
     return 'features'
 
 def get_labels():

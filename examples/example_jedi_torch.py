@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.autograd.variable import Variable
-#import torch.optim as optim
 import itertools
+import numpy as np
 
 args_cuda = True
 args_sumO = True
@@ -156,7 +156,7 @@ def get_all():
     elif 'titan' in host:
         all_list = glob.glob('/ccs/proj/csc291/DATA/hls-fml/NEWDATA/jetImage*_150p_*.h5')
     else:
-        all_list = glob.glob('/storage/group/gpu/bigdata/shared/hls-fml/NEWDATA/jetImage*_150p_*JEDI.h5')
+        all_list = glob.glob('/storage/group/gpu/bigdata/hls-fml/NEWDATA/jetImage*_150p_*.h5')
     #self.X =  np.array(self.f.get('jetConstituentList'))
     #self.y = np.array(self.f.get('jets')[0:,-6:-1])
     return all_list
@@ -184,12 +184,12 @@ def get_val():
     return val_list
 
 def get_features():
-    return 'X'
-    #return 'jetConstituentList'
+    #return 'X'
+    return 'jetConstituentList', lambda x:np.swapaxes(x, 1, 2)
 
 def get_labels():
-    return 'Y'
-    #return 'jets'
+    #return 'Y'
+    return 'jets',lambda y:y[0:,-6:-1]
 
 
 if __name__ == "__main__":
