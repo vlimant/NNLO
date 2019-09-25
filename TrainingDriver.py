@@ -145,7 +145,7 @@ def make_loader( args, features_name, labels_name, train_list):
     )
     # We initialize the Data object with the training data list
     # so that we can use it to count the number of training examples
-    data.set_file_names( train_list )
+    data.set_full_file_names( train_list )
     
     return data
 

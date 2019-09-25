@@ -64,6 +64,11 @@ class Data(object):
           file_names: list of data files to use for training
           batch_size: size of training batches
     """
+    def finalize(self):
+        if self.caching_directory:            
+            for fn in self.relocated:
+                print("removing cached file {}".format(fn))
+                os.system('rm -f {}'.format(fn))
 
     def __init__(self, batch_size, cache=None, copy_command=None):
         """Stores the batch size and the names of the data files to be read.
@@ -81,14 +86,16 @@ class Data(object):
     def set_caching_directory(self, cache):
         self.caching_directory = cache
         
+    def set_full_file_names(self, file_names):
+        self.file_names = list(filter(None, file_names))
+
     def set_file_names(self, file_names):
-        ## hook to copy data in /dev/shm
         relocated = []
+        self.relocated = []
         if self.caching_directory:
             goes_to = self.caching_directory
-            goes_to += str(os.getpid())
+            goes_to += "/"+str(os.getpid())
             os.system('mkdir -p %s '%goes_to)
-            #os.system('rm %s/* -f'%goes_to) ## clean first if anything
             for fn in file_names:
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
@@ -96,17 +103,18 @@ class Data(object):
                     cmd = self.copy_command.format( fn, relocate )
                     if os.system(cmd)==0:
                         relocated.append( relocate )
+                        self.relocated.append( relocate )
                     else:
                         logging.error("was unable to copy the file with {}".format( cmd ))
                         relocated.append( fn ) ## use the initial one
                 else:
                     relocated.append( relocate )
+                    self.relocated.append( relocate )
                         
             self.file_names = relocated
         else:
             self.file_names = file_names
 
-        self.file_names = list(filter(None, self.file_names))
         if self.fpl:
             self.fpl.files_list = self.file_names
 
@@ -270,3 +278,4 @@ class H5Data(Data):
     def finalize(self):
         if self.fpl:
             self.fpl.stop()
+        Data.finalize(self)
