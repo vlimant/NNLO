@@ -131,6 +131,20 @@ def get_model(**args):
     params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel', 'j1_eta' , 'j1_etarel' ,
               'j1_etarot' , 'j1_phi' , 'j1_phirel' , 'j1_phirot', 'j1_deltaR' , 'j1_costheta' , 'j1_costhetarel']
 
+    load = False
+    if load:
+        if args_sumO:
+            x = [10,  6,  6,  0,  2,  1,  0]
+        else:
+            x = [50, 14,  6,  2,  2,  0,  0]
+        ## load the best model for 150 particles
+        args.setdefault('hidden', x[0])
+        args.setdefault('De', x[1])
+        args.setdefault('Do', x[2])
+        args.setdefault('fr_act', x[3])
+        args.setdefault('fo_act', x[4])
+        args.setdefault('fc_act', x[5])
+
     mymodel = GraphNet(nParticles, len(labels), params,
                        hidden = args.get('hidden', 10),
                        De = args.get('De', 10),
