@@ -552,6 +552,9 @@ class GEM(Optimizer):
 
         self.tensors_initialized = False
 
+    def reset(self):
+        self.tensors_initialized = False
+
     def init_tensors(self, weights):
         if not self.tensors_initialized:
             self.central_variable_moment = [ np.zeros_like(w) for w in weights ]
