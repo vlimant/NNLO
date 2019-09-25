@@ -50,7 +50,7 @@ class TorchBuilderFromFunction(BuilderFromFunction):
         args = dict(zip([p.name for p in self.parameters], params))
         try:
             model_pytorch = self.model_fn(**args)
-            return ModelPytorch(None, source=model_pytorch)
+            return ModelPytorch(None, source=model_pytorch, gpus=self.gpus)
         except:
             str_param = ','.join('{0}={1!r}'.format(k,v) for k,v in args.items())
             logging.warning("Failed to build model with params: {}".format(str_param))
@@ -164,7 +164,7 @@ if __name__ == '__main__':
         if use_tf:
             model_provider = BuilderFromFunction( model_fn = module.get_model )
         else:
-            model_provider = TorchBuilderFromFunction( model_fn = module.get_model )
+            model_provider = TorchBuilderFromFunction( model_fn = module.get_model)
 
         (train_list, val_list) = make_train_val_lists(module, args)
         (features_name, labels_name) = make_features_labels(module, args)
@@ -173,7 +173,7 @@ if __name__ == '__main__':
         if not args.torch:
             model_provider = BuilderFromFunction( model_fn = models.make_topclass_model )
         else:
-            model_provider = TorchBuilderFromFunction( model_fn = models.make_topclass_torch_model )
+            model_provider = TorchBuilderFromFunction( model_fn = models.make_topclass_torch_model)
 
         if 'daint' in host:
             train_list = glob.glob('/scratch/snx3000/vlimant/data/LCDJets_Remake/train/*.h5')
