@@ -90,7 +90,7 @@ class Data(object):
         self.file_names = list(filter(None, file_names))
 
     def set_file_names(self, file_names):
-        relocated = []
+        new_file_names = []
         self.relocated = []
         if self.caching_directory:
             goes_to = self.caching_directory
@@ -102,16 +102,16 @@ class Data(object):
                     logging.info("copying %s to %s", fn , relocate)
                     cmd = self.copy_command.format( fn, relocate )
                     if os.system(cmd)==0:
-                        relocated.append( relocate )
+                        new_file_names.append( relocate )
                         self.relocated.append( relocate )
                     else:
                         logging.error("was unable to copy the file with {}".format( cmd ))
-                        relocated.append( fn ) ## use the initial one
+                        new_file_names.append( fn ) ## use the initial one
                 else:
-                    relocated.append( relocate )
+                    new_file_names.append( relocate )
                     self.relocated.append( relocate )
                         
-            self.file_names = relocated
+            self.file_names = new_file_names
         else:
             self.file_names = file_names
 
