@@ -553,7 +553,13 @@ class MPIWorker(MPIProcess):
                         self.model.set_weights(self.weights)
 
                 Timeline.begin("train_on_batch")
-                train_metrics = self.model.train_on_batch( x=batch[0], y=batch[1] )
+                try:
+                    train_metrics = self.model.train_on_batch( x=batch[0], y=batch[1] )
+                except Exception as e:
+                    print("Exception in train_on_batch")
+                    print(str(e))
+                    print("trying to escape gracefully")
+
                 Timeline.end("train_on_batch")
                 if epoch_metrics.shape != train_metrics.shape:
                     epoch_metrics = np.zeros( train_metrics.shape)
