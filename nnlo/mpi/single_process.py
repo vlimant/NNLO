@@ -5,6 +5,7 @@ import time
 import logging
 
 from .process import MPIWorker, MPIMaster
+from ..util.timeline import Timeline, timeline
 
 class MPISingleWorker(MPIWorker):
     """This class trains its model with no communication to other processes"""
@@ -26,17 +27,22 @@ class MPISingleWorker(MPIWorker):
             checkpoint=checkpoint, checkpoint_interval=checkpoint_interval)
 
     def train(self):
+        Timeline.begin("train")
+        self.start_time = time.time()
         self.check_sanity()
 
         for epoch in range(1, self.num_epochs + 1):
             logging.info("beginning epoch {:d}".format(self.epoch + epoch))
+            Timeline.begin("epoch")
             if self.monitor:
                 self.monitor.start_monitor()
             epoch_metrics = np.zeros((1,))
             i_batch = 0
 
             for i_batch, batch in enumerate(self.data.generate_data()):
+                Timeline.begin("train_on_batch")
                 train_metrics = self.model.train_on_batch( x=batch[0], y=batch[1] )
+                Timeline.end("train_on_batch")
                 if epoch_metrics.shape != train_metrics.shape:
                     epoch_metrics = np.zeros( train_metrics.shape)
                 epoch_metrics += train_metrics
@@ -55,18 +61,25 @@ class MPISingleWorker(MPIWorker):
             l = self.model.get_logs( epoch_metrics )
             self.update_history( l )
 
+            Timeline.begin("epoch")
+
             if self.stop_training:
                 break
 
             self.validate()
             self.save_checkpoint()
+            
 
         logging.info("Signing off")
         if self.monitor:
             self.update_monitor( self.monitor.get_stats() )        
 
+        self.stop_time = time.time()
+        Timeline.end("train")
         self.data.finalize()
 
     def validate(self):
         return MPIMaster.validate_aux(self, self.weights, self.model)
 
+    def record_details(self, json_name=None, meta=None):
+        MPIMaster.record_details(self, json_name, meta)
