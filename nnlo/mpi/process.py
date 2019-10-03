@@ -517,6 +517,7 @@ class MPIWorker(MPIProcess):
          -Compute the update with GEM
          -Send the update to master and apply it to own weights
         """
+        if self.is_shadow(): return
         self.notify_parent()
         self.recv_weights()
         self.update = self.algo.compute_update_worker(self.weights, self.update)
