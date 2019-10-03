@@ -308,6 +308,14 @@ if __name__ == '__main__':
                           checkpoint=args.checkpoint, checkpoint_interval=args.checkpoint_interval)
 
 
+    if m_module:
+        model_name =m_module.get_name()
+    else:
+        model_name = os.path.basename(args.model).replace('.json','')
+
+    json_name = '_'.join([model_name,args.trial_name,"history.json"])
+    tl_json_name = '_'.join([model_name,args.trial_name,"timeline.json"])
+
     # Process 0 launches the training procedure
     if comm.Get_rank() == 0:
         logging.debug('Training configuration: %s', algo.get_config())
@@ -318,20 +326,10 @@ if __name__ == '__main__':
         manager.free_comms()
         logging.info("Training finished in {0:.3f} seconds".format(delta_t))
 
-        if args.model.endswith('.py'):
-            module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None])
-            try:
-                model_name = module.get_name()
-            except:
-                model_name = os.path.basename(args.model).replace('.py','').replace('/', '.')
-        else:
-            model_name = os.path.basename(args.model).replace('.json','')
-
-        json_name = '_'.join([model_name,args.trial_name,"history.json"])
         manager.process.record_details(json_name,
                                        meta={"args":vars(args)})            
         logging.info("Wrote trial information to {0}".format(json_name))
 
     comm.barrier()
     logging.info("Terminating")
-    if args.timeline: Timeline.collect(clean=True)
+    if args.timeline: Timeline.collect(clean=True, file_name=tl_json_name)
