@@ -1,6 +1,7 @@
 #from keras.activations import relu, selu, elu
 from keras.models import Model, Sequential
 from keras.layers import Dense, Input, GRU, Dropout, Flatten, Permute
+import numpy as np
 
 def get_model(**args):
 
@@ -43,7 +44,7 @@ def get_all():
     elif 'titan' in host:
         all_list = glob.glob('/ccs/proj/csc291/DATA/hls-fml/NEWDATA/*_150p_*.h5')
     else:
-        all_list = glob.glob('/bigdata/shared/hls-fml/NEWDATA/*_150p_*JEDI.h5')
+        all_list = glob.glob('/storage/group/gpu/bigdata/hls-fml/NEWDATA/jetImage*_150p_*.h5')
     #self.X =  np.array(self.f.get('jetConstituentList'))
     #self.y = np.array(self.f.get('jets')[0:,-6:-1])
     return all_list
@@ -70,9 +71,7 @@ def get_val():
     return val_list
 
 def get_features():
-    return 'X'
-    #return 'jetConstituentList'
+    return 'jetConstituentList',lambda x:np.swapaxes(x, 1, 2)
 
 def get_labels():
-    return 'Y'
-    #return 'jet_target'
+    return 'jets',lambda y:y[0:,-6:-1]
