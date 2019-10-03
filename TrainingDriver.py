@@ -35,7 +35,7 @@ def add_master_option(parser):
     
 def add_worker_options(parser):
     parser.add_argument('--worker-optimizer',help='optimizer for workers to use',
-            dest='worker_optimizer', default='sgd')
+            dest='worker_optimizer', default='adam')
     parser.add_argument('--worker-optimizer-params',help='worker optimizer parameters (string representation of a dict)',
             dest='worker_optimizer_params', default='{}')
     
@@ -123,7 +123,7 @@ def add_train_options(parser):
     parser.add_argument('--sync-every', help='how often to sync weights with master', 
             default=1, type=int, dest='sync_every')
     parser.add_argument('--mode',help='Mode of operation.'
-                        'One of "downpour" (Downpour), "easgd" (Elastic Averaging SGD) or "gem" (Gradient Energy Matching)',default='downpour',choices=['downpour','easgd','gem'])
+                        'One of "downpour" (Downpour), "easgd" (Elastic Averaging SGD) or "gem" (Gradient Energy Matching)',default='gem',choices=['downpour','easgd','gem'])
 
     add_master_option(parser)
     add_gem_options(parser)
