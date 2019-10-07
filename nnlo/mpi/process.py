@@ -590,6 +590,7 @@ class MPIWorker(MPIProcess):
         self.send_exit_to_parent()
         self.send_history_to_parent()
         self.data.finalize()
+        self.model.close()
 
     @timeline
     def compute_update(self):

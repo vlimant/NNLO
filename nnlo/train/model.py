@@ -108,19 +108,6 @@ class MPIModel(object):
             for m,mw in zip(self.models, w ):
                 m.set_weights( mw )
             
-    #def history(self):
-    #    if self.model:
-    #        return self.model.history.history
-    #    else:
-    #        return [m.history.history for m in self.models]
-            
-    #def set_history(self, h):
-    #    if self.model:
-    #        self.model.history = h()
-    #    else:
-    #        for m in self.models:
-    #            m.history = h()
-
     @session
     def compile(self, **args):
         if 'optimizer' in args and isinstance(args['optimizer'], OptimizerBuilder):
@@ -201,6 +188,27 @@ class MPITModel(MPIModel):
             import torch.nn as nn
             self.model = nn.DataParallel(self.model)
         setattr(self.model, 'metrics_names', self.metrics_names)
+        
+    def close(self):
+        MPIModel.close(self)
+        import torch
+        import gpustat
+
+        stats = gpustat.GPUStatCollection.new_query()
+        print("GPU usage before deleting model")
+        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+        
+        del self.model
+        stats = gpustat.GPUStatCollection.new_query()
+        print("GPU usage after deleting model")
+        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+
+        torch.cuda.empty_cache()
+        
+        stats = gpustat.GPUStatCollection.new_query()
+        print("GPU usage after cache release")
+        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+
         
     def format_update(self):
         ws = self.get_weights()
@@ -497,9 +505,6 @@ class ModelPytorch(ModelBuilder):
 
     def build_model(self, local_session=True):
         import gpustat
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage before building model")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
         import torch
         ## free memory used
         torch.cuda.empty_cache()
