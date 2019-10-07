@@ -496,7 +496,16 @@ class ModelPytorch(ModelBuilder):
         self.gpus=gpus
 
     def build_model(self, local_session=True):
+        import gpustat
+        stats = gpustat.GPUStatCollection.new_query()
+        print("GPU usage before building model")
+        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
         import torch
+        ## free memory used
+        torch.cuda.empty_cache()
+        stats = gpustat.GPUStatCollection.new_query()
+        print("GPU usage before building model, after cache release")
+        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
         if self.filename is not None:
             model = torch.load(self.filename)
         elif self.model is not None:
