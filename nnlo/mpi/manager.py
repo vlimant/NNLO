@@ -418,8 +418,6 @@ class MPIKFoldManager(MPIManager):
 
     def close(self):
         self.manager.close()
-    #def free_comms(self):
-        #self.manager.free_comms()
 
     def train(self):
         self.manager.train()

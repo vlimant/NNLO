@@ -11,21 +11,19 @@ import logging
 def tell_gpu_memory(label):
     import gpustat
     stats = gpustat.GPUStatCollection.new_query()
-    print("GPU usage "+label)
-    print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+    logging.debug("GPU memory usage {0}: {1}".format(label, ",".join(["{0}:{1}".format(gpu.entry['index'], gpu.entry['memory.used']) for gpu in stats])))
 
 def show_torch_memory(label):
     import gc
     import torch
     from functools import reduce
     import operator as op
-    print("Memory content for torch "+label)
+    logging.info("Memory content for torch {0}".format(label))
     for obj in gc.get_objects():
         try:
             if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                print(reduce(op.mul, obj.size()) if len(obj.size()) > 0 else 0, type(obj), obj.size())
+                logging.info(reduce(op.mul, obj.size()) if len(obj.size()) > 0 else 0, type(obj), obj.size())
         except Exception as e:
-            print(e)
             pass
 
 def session(f):
@@ -214,7 +212,6 @@ class MPITModel(MPIModel):
         import torch
         tell_gpu_memory("before deleting model")
         del self.model
-        tell_gpu_memory("after deleting model")
         torch.cuda.empty_cache()
         tell_gpu_memory("after cache release")
         show_torch_memory("after cache release")
@@ -338,9 +335,6 @@ class MPITModel(MPIModel):
             acc = self._accuracy(pred.data, target, topk=(1,))[0]
             if self.gpus > 0: acc = acc.cpu()
             self.metrics.append(acc.numpy()[0])
-        ## try to release cuda memory
-        #del x
-        #del target 
         return np.asarray(self.metrics)
 
 
@@ -370,9 +364,6 @@ class MPITModel(MPIModel):
             acc = self._accuracy(pred.data, target, topk=(1,))[0]
             if self.gpus > 0: acc = acc.cpu()
             self.metrics.append(acc.numpy()[0])
-        #try releasing memory
-        #del x
-        #del target
         return np.asarray(self.metrics)
 
     def save(self, *args,**kwargs):
@@ -530,14 +521,7 @@ class ModelPytorch(ModelBuilder):
             if True:
                 model = copy.deepcopy(self.model)
             else:
-                #print ("cloning in torch")
-                #model = type(self.model)()
-                #model.load_state_dict(self.model.state_dict())
                 model = self.model
-                ##import pickle
-                ##print ("model to be pickled")
-                ##model = pickle.loads(pickle.dumps(self.model))
-            print ("model was cloned")
         if self.weights:
             wd = torch.load(self.weights)
             model.load_state_dict(wd)
