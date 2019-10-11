@@ -8,6 +8,26 @@ import sys
 import six
 import logging
 
+def tell_gpu_memory(label):
+    import gpustat
+    stats = gpustat.GPUStatCollection.new_query()
+    print("GPU usage "+label)
+    print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+
+def show_torch_memory(label):
+    import gc
+    import torch
+    from functools import reduce
+    import operator as op
+    print("Memory content for torch "+label)
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                print(reduce(op.mul, obj.size()) if len(obj.size()) > 0 else 0, type(obj), obj.size())
+        except Exception as e:
+            print(e)
+            pass
+
 def session(f):
     def wrapper(*args, **kwargs):
         self_obj = args[0]
@@ -192,24 +212,13 @@ class MPITModel(MPIModel):
     def close(self):
         MPIModel.close(self)
         import torch
-        import gpustat
-
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage before deleting model")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
-        
+        tell_gpu_memory("before deleting model")
         del self.model
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage after deleting model")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
-
+        tell_gpu_memory("after deleting model")
         torch.cuda.empty_cache()
-        
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage after cache release")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+        tell_gpu_memory("after cache release")
+        show_torch_memory("after cache release")
 
-        
     def format_update(self):
         ws = self.get_weights()
         return [ np.zeros( w.shape, dtype=np.float32 ) for w in ws]
@@ -329,6 +338,9 @@ class MPITModel(MPIModel):
             acc = self._accuracy(pred.data, target, topk=(1,))[0]
             if self.gpus > 0: acc = acc.cpu()
             self.metrics.append(acc.numpy()[0])
+        ## try to release cuda memory
+        #del x
+        #del target 
         return np.asarray(self.metrics)
 
 
@@ -358,6 +370,9 @@ class MPITModel(MPIModel):
             acc = self._accuracy(pred.data, target, topk=(1,))[0]
             if self.gpus > 0: acc = acc.cpu()
             self.metrics.append(acc.numpy()[0])
+        #try releasing memory
+        #del x
+        #del target
         return np.asarray(self.metrics)
 
     def save(self, *args,**kwargs):
@@ -504,13 +519,11 @@ class ModelPytorch(ModelBuilder):
         self.gpus=gpus
 
     def build_model(self, local_session=True):
-        import gpustat
         import torch
         ## free memory used
+        tell_gpu_memory("before building model, before cache release")
         torch.cuda.empty_cache()
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage before building model, after cache release")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+        tell_gpu_memory("before building model, after cache release")
         if self.filename is not None:
             model = torch.load(self.filename)
         elif self.model is not None:
