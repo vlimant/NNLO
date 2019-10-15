@@ -131,7 +131,7 @@ class ProcessBlock(object):
                 json_name=history_name + '.json',
                 meta={'parameters': list(map(float,self.last_params)),
                                                          'fold' : manager.fold_num})
-            manager.free_comms()            
+            manager.close()
             return fom
 
     def send_result(self, result):

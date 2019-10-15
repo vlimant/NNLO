@@ -8,6 +8,24 @@ import sys
 import six
 import logging
 
+def tell_gpu_memory(label):
+    import gpustat
+    stats = gpustat.GPUStatCollection.new_query()
+    logging.debug("GPU memory usage {0}: {1}".format(label, ",".join(["{0}:{1}".format(gpu.entry['index'], gpu.entry['memory.used']) for gpu in stats])))
+
+def show_torch_memory(label):
+    import gc
+    import torch
+    from functools import reduce
+    import operator as op
+    logging.info("Memory content for torch {0}".format(label))
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                logging.info(reduce(op.mul, obj.size()) if len(obj.size()) > 0 else 0, type(obj), obj.size())
+        except Exception as e:
+            pass
+
 def session(f):
     def wrapper(*args, **kwargs):
         self_obj = args[0]
@@ -108,19 +126,6 @@ class MPIModel(object):
             for m,mw in zip(self.models, w ):
                 m.set_weights( mw )
             
-    #def history(self):
-    #    if self.model:
-    #        return self.model.history.history
-    #    else:
-    #        return [m.history.history for m in self.models]
-            
-    #def set_history(self, h):
-    #    if self.model:
-    #        self.model.history = h()
-    #    else:
-    #        for m in self.models:
-    #            m.history = h()
-
     @session
     def compile(self, **args):
         if 'optimizer' in args and isinstance(args['optimizer'], OptimizerBuilder):
@@ -202,6 +207,15 @@ class MPITModel(MPIModel):
             self.model = nn.DataParallel(self.model)
         setattr(self.model, 'metrics_names', self.metrics_names)
         
+    def close(self):
+        MPIModel.close(self)
+        import torch
+        #tell_gpu_memory("before deleting model")
+        del self.model
+        torch.cuda.empty_cache()
+        #tell_gpu_memory("after cache release")
+        #show_torch_memory("after cache release")
+
     def format_update(self):
         ws = self.get_weights()
         return [ np.zeros( w.shape, dtype=np.float32 ) for w in ws]
@@ -496,30 +510,18 @@ class ModelPytorch(ModelBuilder):
         self.gpus=gpus
 
     def build_model(self, local_session=True):
-        import gpustat
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage before building model")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
         import torch
         ## free memory used
+        #tell_gpu_memory("before building model, before cache release")
         torch.cuda.empty_cache()
-        stats = gpustat.GPUStatCollection.new_query()
-        print("GPU usage before building model, after cache release")
-        print(list([(gpu.entry['memory.used'],gpu.entry['index']) for gpu in stats]))
+        #tell_gpu_memory("before building model, after cache release")
         if self.filename is not None:
             model = torch.load(self.filename)
         elif self.model is not None:
             if True:
                 model = copy.deepcopy(self.model)
             else:
-                #print ("cloning in torch")
-                #model = type(self.model)()
-                #model.load_state_dict(self.model.state_dict())
                 model = self.model
-                ##import pickle
-                ##print ("model to be pickled")
-                ##model = pickle.loads(pickle.dumps(self.model))
-            print ("model was cloned")
         if self.weights:
             wd = torch.load(self.weights)
             model.load_state_dict(wd)

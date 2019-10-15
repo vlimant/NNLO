@@ -341,42 +341,10 @@ class MPIManager(object):
             logging.debug("  {0}".format(f))
         self.data.set_file_names( self.val_list )
 
-#    def make_comms_many(self,comm):
-#        """Create MPI communicators# (Case 1):
-#            Rank 0 of comm_block is# the master, other ranks are workers.
-#            Rank 0 of comm_master i#s the super-master, other ranks are sub-masters.
-#            Sets is_master and work#er_id attributes."""
-#
-#        # Create a communicator containing all processes except the first.  
-#        # Then divide that communicator into blocks, each with one master
-#        ranks_excludefirstprocess = range(1,comm.Get_size()) 
-#        comm_excludefirstprocess = comm.Create( comm.Get_group().Incl( ranks_excludefirstprocess ) )
-#        if comm.Get_rank() in ranks_excludefirstprocess:
-#            size_block = (comm.Get_size()-1) // (self.num_masters-1)
-#            color_block = comm_excludefirstprocess.Get_rank() // size_block
-#            self.comm_block = comm_excludefirstprocess.Split( color_block )
-#            comm_excludefirstprocess.Free()
-#        else:
-#            self.comm_block = None
-#        # Create a communicator containing all masters
-#        ranks_mastergroup = get_master_ranks( comm, self.num_masters )
-#        self.comm_masters = comm.Create( comm.Get_group().Incl(ranks_mastergroup) )
-#        self.is_master = ( comm.Get_rank() in ranks_mastergroup )
-#        self.should_validate = ( comm.Get_rank() == 0 )
-#        # Get the worker ID
-#        ranks_workergroup = get_worker_ranks( comm, self.num_masters )
-#        if not self.is_master:
-#            self.worker_id = ranks_workergroup.index( comm.Get_rank() )
-#
-#    def make_comm_single(self,comm):
-#        """Create MPI communicator (Case 2): Rank 0 is master, all others are workers
-#            Sets is_master and worker_id attributes"""
-#        self.comm_block = comm
-#        self.is_master = ( self.comm_block.Get_rank() == 0 )
-#        self.should_validate = self.is_master
-#        if not self.is_master:
-#            self.worker_id = self.comm_block.Get_rank() - 1
-#
+    def close(self):
+        self.free_comms()
+        self.process.model.close()
+    
     def free_comms(self):
         """Free active MPI communicators"""
         if self.process.process_comm is not None:
@@ -448,8 +416,8 @@ class MPIKFoldManager(MPIManager):
                                   early_stopping,target_metric,monitor,
                                   checkpoint=checkpoint, checkpoint_interval=checkpoint_interval)
 
-    def free_comms(self):
-        self.manager.free_comms()
+    def close(self):
+        self.manager.close()
 
     def train(self):
         self.manager.train()

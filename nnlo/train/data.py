@@ -99,7 +99,7 @@ class Data(object):
             for fn in file_names:
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
-                    logging.info("copying %s to %s", fn , relocate)
+                    logging.debug("Copying %s to %s", fn , relocate)
                     cmd = self.copy_command.format( fn, relocate )
                     if os.system(cmd)==0:
                         new_file_names.append( relocate )

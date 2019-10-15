@@ -323,12 +323,12 @@ if __name__ == '__main__':
         t_0 = time()
         histories = manager.process.train() 
         delta_t = time() - t_0
-        manager.free_comms()
         logging.info("Training finished in {0:.3f} seconds".format(delta_t))
 
         manager.process.record_details(json_name,
                                        meta={"args":vars(args)})            
         logging.info("Wrote trial information to {0}".format(json_name))
+        manager.close()
 
     comm.barrier()
     logging.info("Terminating")
