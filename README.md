@@ -3,6 +3,9 @@ Distributed learning with mpi
 
 Dependencies: [`OpenMPI`](https://www.open-mpi.org/) and [`mpi4py`](http://mpi4py.readthedocs.io/en/stable/) (v. >= 2.0.0), [`keras`](https://keras.io/) (v. >= 1.2.0)
 
+# Credits 
+The original package was implemented by [Dustin Anderson](https://github.com/duanders) and evolution of optimization from [Thong Nguyen](https://github.com/thongonary) were transfered to [mpi-learn](https://github.com/vlimant/mpi_learn) and [mpi-opt](https://github.com/vlimant/mpi_opt) for practical purpose. Both eventually merged in this repository.
+
 ## Examples
 
 Test with the MNIST dataset, with keras+tensorflow
