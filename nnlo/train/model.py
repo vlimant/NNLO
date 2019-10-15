@@ -210,11 +210,11 @@ class MPITModel(MPIModel):
     def close(self):
         MPIModel.close(self)
         import torch
-        tell_gpu_memory("before deleting model")
+        #tell_gpu_memory("before deleting model")
         del self.model
         torch.cuda.empty_cache()
-        tell_gpu_memory("after cache release")
-        show_torch_memory("after cache release")
+        #tell_gpu_memory("after cache release")
+        #show_torch_memory("after cache release")
 
     def format_update(self):
         ws = self.get_weights()
@@ -512,9 +512,9 @@ class ModelPytorch(ModelBuilder):
     def build_model(self, local_session=True):
         import torch
         ## free memory used
-        tell_gpu_memory("before building model, before cache release")
+        #tell_gpu_memory("before building model, before cache release")
         torch.cuda.empty_cache()
-        tell_gpu_memory("before building model, after cache release")
+        #tell_gpu_memory("before building model, after cache release")
         if self.filename is not None:
             model = torch.load(self.filename)
         elif self.model is not None:
