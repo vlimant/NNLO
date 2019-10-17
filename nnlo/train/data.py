@@ -35,7 +35,7 @@ class FilePreloader(Thread):
                 break
             n_there = len(self.loaded.keys())
             if n_there< self.n_concurrent:
-                logging.debug("preloading %s with %d",name,n_there)
+                logging.debug("preloading {} with {}".format(name,n_there))
                 self.getFile( name )
             else:
                 time.sleep(5)
@@ -67,7 +67,7 @@ class Data(object):
     def finalize(self):
         if self.caching_directory:            
             for fn in self.relocated:
-                print("removing cached file {}".format(fn))
+                logging.debug("removing cached file {}".format(fn))
                 os.system('rm -f {}'.format(fn))
 
     def __init__(self, batch_size, cache=None, copy_command=None):
@@ -99,7 +99,7 @@ class Data(object):
             for fn in file_names:
                 relocate = goes_to+'/'+fn.split('/')[-1]
                 if not os.path.isfile( relocate ):
-                    logging.debug("Copying %s to %s", fn , relocate)
+                    logging.debug("Copying {} to {}".format( fn , relocate))
                     cmd = self.copy_command.format( fn, relocate )
                     if os.system(cmd)==0:
                         new_file_names.append( relocate )
