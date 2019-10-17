@@ -16,7 +16,6 @@ from nnlo.util.utils import import_keras
 from nnlo.mpi.manager import get_device, get_groups
 from nnlo.optimize.coordinator import Coordinator
 from nnlo.optimize.process_block import ProcessBlock
-from nnlo.train.GanModel import GANBuilder
 from skopt.space import Real, Integer, Categorical
 from nnlo.util.logger import initialize_logger
 
@@ -220,6 +219,7 @@ if __name__ == '__main__':
         features_name='features'
         labels_name='labels'
     elif test == 'gan':
+        from nnlo.train.GanModel import GANBuilder
         ### the gan example
         model_provider = GANBuilder( parameters = [ Integer(50,400, name='latent_size' ),
                                                     Real(0.0, 1.0, name='discr_drop_out'),
