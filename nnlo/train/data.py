@@ -201,7 +201,7 @@ class FrameData(Data):
                  feature_adaptor,
                  cache=None,
                  copy_command=None,
-                 preloading=0,,
+                 preloading=0,
                  frame_name='frame', 
                  labels_name='label'):
         
@@ -239,7 +239,7 @@ class FrameData(Data):
         num_data = 0
         for in_file_name in self.file_names:
             h5_file = h5py.File( in_file_name, 'r' )
-            X = h5_file[frame_name]
+            X = h5_file[self.frame_name]
             num_data += len(X)
             h5_file.close()
         return num_data        
@@ -266,8 +266,8 @@ class FrameData(Data):
             for cur_pos in range(0, num_in_file, self.batch_size):
                 next_pos = cur_pos + self.batch_size 
                 if next_pos <= num_in_file:
-                yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
-                        cur_frame[self.labels_name].iloc[cur_pos : next_pos].value )
+                    yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
+                            cur_frame[self.labels_name].iloc[cur_pos : next_pos].value )
                 else:
                     leftovers = cur_frame.iloc[cur_pos, num_in_file]   
               
@@ -282,6 +282,11 @@ class FrameData(Data):
         batch = cur_frame.iloc[start_pos : end_pos]
         return self.feature_adaptor( batch )
 
+    
+    def finalize(self):
+        if self.fpl:
+            self.fpl.stop()
+        Data.finalize(self)
     
         
         
