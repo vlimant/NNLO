@@ -266,7 +266,8 @@ class FrameData(Data):
             for cur_pos in range(0, num_in_file, self.batch_size):
                 next_pos = cur_pos + self.batch_size 
                 if next_pos <= num_in_file:
-                yield ( self.get_batch( cur_frame, cur_pos, next_pos ), cur_frame[self.label].iloc[cur_pos : next_pos].value )
+                yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
+                        cur_frame[self.labels_name].iloc[cur_pos : next_pos].value )
                 else:
                     leftovers = cur_frame.iloc[cur_pos, num_in_file]   
               

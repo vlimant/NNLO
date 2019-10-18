@@ -1,3 +1,12 @@
+# Constants
+PATH_DATA = '/storage/user/llayer/NNLO'
+N_CODES = 77
+N_SITES = 81
+N_COUNTS = 2
+N_WORDS = 30674
+MAX_WORDS = 400
+
+
 def make_count_model(**args):
     
     from keras.layers import Input, Flatten, Dense, Dropout, Reshape, multiply
@@ -9,12 +18,9 @@ def make_count_model(**args):
     dense_units = args.get('dense_units', 50)
     l2reg = args.get('l2reg', 0.001)
     dropout = args.get('dropout', 0.001)
+   
     
-    n_codes = 77
-    n_sites = 81
-    n_counts = 2
-    
-    m_input = Input((n_codes, n_sites, n_counts))
+    m_input = Input((N_CODES, N_SITES, N_COUNTS))
 
     m = m_input
 
@@ -48,26 +54,22 @@ def make_nlp_model(**args):
     do = args.get('do', 0.)
     
     # Constants
-    n_codes = 77
-    n_sites = 81
-    n_counts = 2
-    n_words = 30674
     encode_sites = False
     
     # Word encoder model
     words_input = Input(shape = ( None, ), dtype='int32')
-    words_embedding = Embedding(n_words, embedding_dim, mask_zero = True)(words_input)
+    words_embedding = Embedding(N_WORDS, embedding_dim, mask_zero = True)(words_input)
     words_gru = GRU(rnn_units, kernel_regularizer=l2(l2_reg), recurrent_dropout = rec_do)(words_embedding)
     wordEncoder = Model(words_input, words_gru)
     
     # Full model
-    sent_input = Input(shape = (n_codes * n_sites, None), dtype='int32')
-    count_input = Input(shape = (n_codes, n_sites, 2, ), dtype='float32')
+    sent_input = Input(shape = (N_CODES * N_SITES, None), dtype='int32')
+    count_input = Input(shape = (N_CODES, N_SITES, 2, ), dtype='float32')
     sent_encoded = TimeDistributed(wordEncoder)(sent_input)
-    sent_encoded_reshaped = Reshape(( n_codes , n_sites, rnn_units))(sent_encoded)
+    sent_encoded_reshaped = Reshape(( N_CODES , N_SITES, rnn_units))(sent_encoded)
     concat_counts_sent = Concatenate(axis=3)([sent_encoded_reshaped, count_input])
     if encode_sites:
-        codes_reshaped = Reshape(( n_codes , n_sites * (rnn_units*n_counts)))(concat_counts_sent)
+        codes_reshaped = Reshape(( N_CODES , N_SITES * (rnn_units*N_COUNTS)))(concat_counts_sent)
         sites_encoded = TimeDistributed(Dense(site_units, activation = 'relu', kernel_regularizer=l2(l2_reg)))(codes_reshaped)
         flat = Flatten()(sites_encoded)                                 
     else:
@@ -80,10 +82,92 @@ def make_nlp_model(**args):
     model = Model([sent_input, count_input], preds)
     
     return model
-    
 
 
 get_model = make_nlp_model
+
+
+
+    
+import numpy as np
+
+# Dictionary to define the indexing for the codes and sites
+codes_dict = #pickle.load ... TODO
+sites_dict = #pickle.load ... TODO
+
+def to_dense(np_msg, np_counts, index, values):
+
+    errors, sites, counts, site_states, error_messages = values
+
+    # Loop over the codes and sites
+    for i_key in range(len(errors)):
+
+        error = errors[i_key]
+        site = sites[i_key]
+        count = counts[i_key]
+        site_state = site_states[i_key]
+
+        # Fill counts
+        if site_state == 'good':
+            site_state_encoded = 0
+        else:
+            site_state_encoded = 1
+        np_counts[index, codes_dict[error], sites_dict[site], site_state_encoded] += count
+
+        # Fill the error messages
+        error_message = error_messages[i_key]
+        # Only continue if there exists a message
+        if isinstance(error_message, (list,)):
+            
+            # Cut/Pad the error message
+            error_message = np.array(array)(error_message)
+            pad_size = np_msg.shape[3] - error_message.shape[0]
+            if pad_size < 0:
+                error_message = error_message[-np_msg.shape[3] : ]
+            else:
+                npad = (0, pad_size)
+                error_message = np.pad(error_message, pad_width=npad, mode='constant', constant_values=int(0))
+
+            #print( error_message )
+            np_msg[index, codes_dict[error], sites_dict[site]] = error_message    
+
+            
+def batch_generator( batch ):
+    
+    
+    batch_size = len(batch)
+    tokens_key = 'msg_encoded'
+    
+    # Loop over the messages to find the longest one
+    padding_dim = 1
+    for messages in batch[tokens_key]:
+        for msg in message:
+            if isinstance(msg, (list,)):
+                if len(msg) > padding_dim:
+                    padding_dim = len(msg)
+    
+    # Limit to the maximum number of words
+    if padding_dim > MAX_WORDS:
+        padding_dim = MAX_WORDS
+    
+    # Setup the numpy matrix
+    np_msg = np.zeros(batch_size, N_CODES, N_SITES, padding_dim, dtype=np.int32)
+    np_counts = np.zeros((batch_size, N_CODES, N_SITES, N_COUNTS), dtype=np.int32)
+    
+    # Fill the matrix
+    [to_dense(np_msg, np_counts, counter, values) for counter, values in enumerate(zip(batch['error'],
+                                                                                       batch['site'], 
+                                                                                       batch['count'],
+                                                                                       batch['site_state'], 
+                                                                                       batch[tokens_key]))]    
+    
+    # Reshape the error site matrix for the messages
+    np_msg = np_msg.reshape((batch_size, N_CODES * N_SITES, padding_dim))
+    
+    # Return the matrix
+    return [np_msg, np_counts]   
+    
+    
 
 from skopt.space import Real, Integer, Categorical
 get_model.parameter_range =     [
@@ -96,8 +180,6 @@ get_model.parameter_range =     [
     Integer(     low=10,   high=100,                       name='dense_units'   ),
 ]
 
-
-PATH_DATA = '/storage/user/llayer/NNLO'
 
 def get_name():
     return 'nlp'
