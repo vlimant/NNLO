@@ -141,7 +141,7 @@ def batch_generator( batch ):
     # Loop over the messages to find the longest one
     padding_dim = 1
     for messages in batch[tokens_key]:
-        for msg in message:
+        for msg in messages:
             if isinstance(msg, (list,)):
                 if len(msg) > padding_dim:
                     padding_dim = len(msg)
