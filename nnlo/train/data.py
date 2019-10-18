@@ -206,7 +206,7 @@ class FrameData(Data):
                  labels_name='label'):
         
         """Initializes and stores names of feature and label datasets"""
-        super(H5Data, self).__init__(batch_size,cache,copy_command)
+        super(FrameData, self).__init__(batch_size,cache,copy_command)
         self.feature_adaptor = feature_adaptor
         self.frame_name = frame_name
         self.labels_name = labels_name
@@ -219,6 +219,7 @@ class FrameData(Data):
         
     def load_data(self, in_file_name):
 
+        """
         if self.fpl:
             h5_file = self.fpl.getFile( in_file_name )
         else:
@@ -230,7 +231,8 @@ class FrameData(Data):
             self.fpl.closeFile( in_file_name )
         else:
             h5_file.close()
-            
+        """
+        frame = pd.read_hdf(in_file_name, 'frame')
         return frame        
            
         
@@ -261,13 +263,13 @@ class FrameData(Data):
                 cur_frame = self.concat_data( leftovers, cur_frame )
                 leftovers = None
                 
-            num_in_file = len(frame)
+            num_in_file = len(cur_frame)
 
             for cur_pos in range(0, num_in_file, self.batch_size):
                 next_pos = cur_pos + self.batch_size 
                 if next_pos <= num_in_file:
                     yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
-                            cur_frame[self.labels_name].iloc[cur_pos : next_pos].value )
+                            cur_frame[self.labels_name].iloc[cur_pos : next_pos].values)
                 else:
                     leftovers = cur_frame.iloc[cur_pos, num_in_file]   
               

@@ -1,5 +1,5 @@
 # Constants
-PATH_DATA = '/storage/user/llayer/NNLO'
+PATH_DATA = '/storage/user/llayer/NNLO/'
 N_CODES = 77
 N_SITES = 81
 N_COUNTS = 2
@@ -90,10 +90,10 @@ get_model = make_nlp_model
 
     
 import numpy as np
-
-# Dictionary to define the indexing for the codes and sites
-codes_dict = #pickle.load ... TODO
-sites_dict = #pickle.load ... TODO
+import pickle
+with open('/storage/user/llayer/NNLO/index.pickle', 'rb') as handle:
+    sites_dict = pickle.load(handle)
+    codes_dict = pickle.load(handle)
 
 def to_dense(np_msg, np_counts, index, values):
 
@@ -120,7 +120,7 @@ def to_dense(np_msg, np_counts, index, values):
         if isinstance(error_message, (list,)):
             
             # Cut/Pad the error message
-            error_message = np.array(array)(error_message)
+            error_message = np.array(error_message)
             pad_size = np_msg.shape[3] - error_message.shape[0]
             if pad_size < 0:
                 error_message = error_message[-np_msg.shape[3] : ]
@@ -151,7 +151,7 @@ def batch_generator( batch ):
         padding_dim = MAX_WORDS
     
     # Setup the numpy matrix
-    np_msg = np.zeros(batch_size, N_CODES, N_SITES, padding_dim, dtype=np.int32)
+    np_msg = np.zeros((batch_size, N_CODES, N_SITES, padding_dim), dtype=np.int32)
     np_counts = np.zeros((batch_size, N_CODES, N_SITES, N_COUNTS), dtype=np.int32)
     
     # Fill the matrix
@@ -181,23 +181,25 @@ get_model.parameter_range =     [
 ]
 
 
+
+
+
 def get_name():
     return 'nlp'
 
 def get_train():
 
-    return [PATH_DATA + 'train_0.h5']
+    return [PATH_DATA + 'train_0.h5', PATH_DATA + 'train_1.h5', PATH_DATA + 'train_2.h5']
 
 def get_val():
 
-    return [PATH_DATA + 'test_0.h5']
+    return [PATH_DATA + 'test_0.h5', PATH_DATA + 'test_1.h5', PATH_DATA + 'test_2.h5']
 
 def get_features():
-    #return ('features', lambda x: x) ##example of data adaptor
-    return 'features'
+    return ('frame', batch_generator) ##example of data adaptor
 
 def get_labels():
-    return 'labels'
+    return 'label'
 
 
 
