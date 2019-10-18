@@ -217,7 +217,7 @@ class FrameData(Data):
             self.fpl.start()    
         
         
-    def load_frame(self, in_file_name):
+    def load_data(self, in_file_name):
 
         if self.fpl:
             h5_file = self.fpl.getFile( in_file_name )
@@ -258,7 +258,7 @@ class FrameData(Data):
             
             # concatenate any leftover data from the previous file
             if leftovers is not None:
-                cur_frame = self.concat_data( leftovers[0], cur_file_features )
+                cur_frame = self.concat_data( leftovers, cur_frame )
                 leftovers = None
                 
             num_in_file = len(frame)
