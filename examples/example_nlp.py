@@ -35,6 +35,7 @@ def make_nlp_model(**args):
     from keras.layers import Embedding, Input, Dense, GRU, TimeDistributed, Dropout, Flatten, Reshape, Concatenate
     from keras.regularizers import l2
     from keras.models import Model
+    if args:logging.debug("receiving arguments {}".format(args))
 
     # Hyper parameter
     rnn_units = args.get('rnn_units', 10)
@@ -83,6 +84,18 @@ def make_nlp_model(**args):
 
 
 get_model = make_nlp_model
+
+from skopt.space import Real, Integer, Categorical
+get_model.parameter_range =     [
+    Real(        low=1e-3, high=0.1,  prior='log-uniform', name='do'            ),
+    Real(        low=1e-4, high=0.9,  prior="log-uniform", name='l2_reg'        ),
+    Integer(     low=5,    high=32,                        name='embedding_dim' ),
+    Integer(     low=5,    high=20,                        name='rnn_units'     ),
+    #Integer(     low=5,    high = 20,                      name = 'site_units'  ),
+    Integer(     low=1,    high=5,                         name='dense_layers'  ),
+    Integer(     low=10,   high=100,                       name='dense_units'   ),
+]
+
 
 PATH_DATA = '/storage/user/llayer/NNLO'
 
