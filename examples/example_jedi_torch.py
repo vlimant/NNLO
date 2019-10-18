@@ -131,12 +131,12 @@ def get_model(**args):
     params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel', 'j1_eta' , 'j1_etarel' ,
               'j1_etarot' , 'j1_phi' , 'j1_phirel' , 'j1_phirot', 'j1_deltaR' , 'j1_costheta' , 'j1_costhetarel']
 
-    load = False
+    load = True
     if load:
         if args_sumO:
-            x = [10,  6,  6,  0,  2,  1,  0]
+            x = [50, 14, 10, 2, 2, 2, 0]
         else:
-            x = [50, 14,  6,  2,  2,  0,  0]
+            x = [10, 4, 14, 2, 2, 2, 0]
         ## load the best model for 150 particles
         args.setdefault('hidden', x[0])
         args.setdefault('De', x[1])
