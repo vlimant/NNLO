@@ -202,5 +202,40 @@ def get_labels():
     return 'label'
 
 
-
+if __name__ == "__main__":
+    
+    import pandas as pd
+    # Open a frame
+    path = PATH_DATA + 'train_0.h5'
+    frame = pd.read_hdf(path, 'frame')
+    print( frame.head() )
+    
+    # Get a batch
+    start = 0
+    batch_size = 2
+    batch = frame.iloc[start: start+batch_size]    
+    matrix = batch_generator( batch )
+    print( matrix[0].shape, matrix[1].shape )
+    matrix_msg = matrix[0].reshape((batch_size, N_CODES, N_SITES, matrix[0].shape[2]))
+    
+    # Fast check that the matrix is filled correctly
+    def print_sample( batch, index ):
+        
+        sample = batch.iloc[index]
+        errors = sample['error']
+        sites = sample['site']
+        message = sample['msg_encoded']
+        print( errors )
+        print( sites )
+        print( message )
+        
+        for i_key in range(len(errors)):
+            
+            print( 'Index error', errors[i_key], ':', codes_dict[errors[i_key]], 
+                   'Index site', sites[i_key], ':', sites_dict[sites[i_key]] )
+            print( 'Inserted in matrix' )
+            print( matrix_msg[index, codes_dict[errors[i_key]], sites_dict[sites[i_key]]] )
+            
+    print_sample( batch, 1 )
+    
 
