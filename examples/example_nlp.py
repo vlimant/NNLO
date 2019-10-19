@@ -1,5 +1,5 @@
 # Constants
-PATH_DATA = '/storage/user/llayer/NNLO/'
+PATH_DATA = '/storage/group/gpu/bigdata/CMSOpPred/'
 N_CODES = 77
 N_SITES = 81
 N_COUNTS = 2
@@ -203,6 +203,9 @@ def get_labels():
 
 
 if __name__ == "__main__":
+    
+    model = get_model()
+    model.summary()
     
     import pandas as pd
     # Open a frame

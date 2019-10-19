@@ -15,7 +15,7 @@ from time import time,sleep
 
 from nnlo.mpi.manager import MPIManager, get_device
 from nnlo.train.algo import Algo
-from nnlo.train.data import H5Data
+from nnlo.train.data import H5Data, FrameData
 from nnlo.train.model import ModelFromJson, ModelTensorFlow, ModelPytorch
 from nnlo.util.utils import import_keras
 from nnlo.util.timeline import Timeline
@@ -136,6 +136,8 @@ def add_train_options(parser):
     add_checkpoint_options(parser)
 
 def make_loader( args, features_name, labels_name, train_list):
+    
+    """
     data = H5Data( batch_size=args.batch,
                    cache = args.caching_dir,
                    copy_command = args.copy_command,                   
@@ -143,6 +145,17 @@ def make_loader( args, features_name, labels_name, train_list):
                    features_name=features_name,
                    labels_name=labels_name,
     )
+    """
+    
+    data = FrameData(batch_size=args.batch,
+                     feature_adaptor = features_name[1],
+                     cache = args.caching_dir,
+                     copy_command = args.copy_command,                   
+                     preloading = None, #args.data_preload,
+                     frame_name=features_name[0],
+                     labels_name=labels_name,
+                    )
+    
     # We initialize the Data object with the training data list
     # so that we can use it to count the number of training examples
     data.set_full_file_names( train_list )
@@ -230,13 +243,16 @@ if __name__ == '__main__':
     args = parser.parse_args()    
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
 
+    
+    
+    
     a_backend = args.backend
     if 'torch' in args.model:
         a_backend = 'torch'
         
     m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
     (features_name, labels_name) = make_features_labels(m_module, args)
-    (train_list, val_list) = make_train_val_lists(m_module, args)
+    (train_list, val_list) = make_train_val_lists(m_module, args) 
     comm = MPI.COMM_WORLD.Dup()
 
     if args.timeline: Timeline.enable()
@@ -287,9 +303,15 @@ if __name__ == '__main__':
 
         model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
 
-
+    
     data = make_loader(args, features_name, labels_name, train_list)
-
+    
+    #print( data )
+    #print( train_list )
+    #print( stop )
+    print( 'DATA', data.count_data() )
+    #print( stop )
+    
     # Some input arguments may be ignored depending on chosen algorithm
     algo = make_algo( args, use_tf, comm, validate_every=int(data.count_data()/args.batch ))
     

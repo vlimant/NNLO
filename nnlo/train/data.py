@@ -232,7 +232,7 @@ class FrameData(Data):
         else:
             h5_file.close()
         """
-        frame = pd.read_hdf(in_file_name, 'frame')
+        frame = pd.read_hdf(in_file_name, self.frame_name)
         return frame        
            
         
@@ -240,10 +240,8 @@ class FrameData(Data):
 
         num_data = 0
         for in_file_name in self.file_names:
-            h5_file = h5py.File( in_file_name, 'r' )
-            X = h5_file[self.frame_name]
-            num_data += len(X)
-            h5_file.close()
+            frame = pd.read_hdf(in_file_name, self.frame_name)
+            num_data += len(frame)
         return num_data        
 
     
@@ -271,7 +269,7 @@ class FrameData(Data):
                     yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
                             cur_frame[self.labels_name].iloc[cur_pos : next_pos].values)
                 else:
-                    leftovers = cur_frame.iloc[cur_pos, num_in_file]   
+                    leftovers = cur_frame.iloc[cur_pos : num_in_file]   
               
             
     def get_batch(self, cur_frame, start_pos, end_pos ):
@@ -280,7 +278,7 @@ class FrameData(Data):
         Convert the batch of the dataframe to a numpy array
         with the provided function
         """
-        
+        #print( 'Gen batch' )
         batch = cur_frame.iloc[start_pos : end_pos]
         return self.feature_adaptor( batch )
 
