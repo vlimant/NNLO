@@ -173,6 +173,8 @@ def get_all():
         all_list = glob.glob('/mnt/ceph/users/vlimant/hls-fml/jetImage*_150p_*.h5')
     elif 'popeye' in host or 'pcn' in host:
         all_list = glob.glob('/simons/scratch/vlimant/JEDI/jetImage*_150p_*.h5')
+    elif 'batch' in host:
+        all_list = glob.glob('/gpfs/alpine/world-shared/hep120/vlimant/JEDI/jetImage*_150p_*.h5')
     else:
         all_list = glob.glob('/storage/group/gpu/bigdata/hls-fml/NEWDATA/jetImage*_150p_*.h5')
     #self.X =  np.array(self.f.get('jetConstituentList'))
