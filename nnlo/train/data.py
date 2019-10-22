@@ -195,8 +195,7 @@ class Data(object):
         
         
 class FrameData(Data):
-    
-
+    """ Load pandas frame stored in hdf5 files """
     def __init__(self, batch_size,
                  feature_adaptor,
                  cache=None,
@@ -204,40 +203,19 @@ class FrameData(Data):
                  preloading=0,
                  frame_name='frame', 
                  labels_name='label'):
-        
         """Initializes and stores names of feature and label datasets"""
         super(FrameData, self).__init__(batch_size,cache,copy_command)
         self.feature_adaptor = feature_adaptor
         self.frame_name = frame_name
         self.labels_name = labels_name
         ## initialize the data-preloader
-        self.fpl = None
-        if preloading:
-            self.fpl = FilePreloader( [] , file_open = lambda n : h5py.File(n,'r'), n_ahead=preloading)
-            self.fpl.start()    
-        
+        self.fpl = None   
         
     def load_data(self, in_file_name):
-
-        """
-        if self.fpl:
-            h5_file = self.fpl.getFile( in_file_name )
-        else:
-            h5_file = h5py.File( in_file_name, 'r' )
-        
-        frame = h5_file[self.frame_name]
-        
-        if self.fpl:
-            self.fpl.closeFile( in_file_name )
-        else:
-            h5_file.close()
-        """
         frame = pd.read_hdf(in_file_name, self.frame_name)
         return frame        
            
-        
     def count_data(self):
-
         num_data = 0
         for in_file_name in self.file_names:
             frame = pd.read_hdf(in_file_name, self.frame_name)
@@ -246,23 +224,21 @@ class FrameData(Data):
 
     
     def concat_data(self, data1, data2):
-
         return pd.concat([data1, data2])
 
         
     def generate_data(self):
-
+        """ 
+        Overwrite the the parent generate_data and adapt to pandas frames
+        """
         leftovers = None
         for cur_file_name in self.file_names:
             cur_frame = self.load_data(cur_file_name)
-            
             # concatenate any leftover data from the previous file
             if leftovers is not None:
                 cur_frame = self.concat_data( leftovers, cur_frame )
                 leftovers = None
-                
             num_in_file = len(cur_frame)
-
             for cur_pos in range(0, num_in_file, self.batch_size):
                 next_pos = cur_pos + self.batch_size 
                 if next_pos <= num_in_file:
@@ -273,7 +249,6 @@ class FrameData(Data):
               
             
     def get_batch(self, cur_frame, start_pos, end_pos ):
-        
         """ 
         Convert the batch of the dataframe to a numpy array
         with the provided function

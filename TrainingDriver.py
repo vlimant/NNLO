@@ -57,6 +57,7 @@ def add_downpour_options(parser):
 
 
 def add_loader_options(parser):
+    parser.add_argument('--data-loader',help='Data loader to load the input files',default='h5py', dest='data_loader')
     parser.add_argument('--preload-data', help='Preload files as we read them', default=0, type=int, dest='data_preload')
     parser.add_argument('--cache-data', help='Cache the input files to a provided directory', default='', dest='caching_dir')
     parser.add_argument('--copy-command', help='Specific command line to copy the data into the cache. Expect a string with two {} first is the source (from input file list), second is the bare file name at destination. Like "cp {} {}"', default=None, dest='copy_command')
@@ -137,24 +138,25 @@ def add_train_options(parser):
 
 def make_loader( args, features_name, labels_name, train_list):
     
-    """
-    data = H5Data( batch_size=args.batch,
-                   cache = args.caching_dir,
-                   copy_command = args.copy_command,                   
-                   preloading = args.data_preload,
-                   features_name=features_name,
-                   labels_name=labels_name,
-    )
-    """
-    
-    data = FrameData(batch_size=args.batch,
-                     feature_adaptor = features_name[1],
-                     cache = args.caching_dir,
-                     copy_command = args.copy_command,                   
-                     preloading = None, #args.data_preload,
-                     frame_name=features_name[0],
-                     labels_name=labels_name,
-                    )
+    if 'dataframe' in args.data_loader:
+        
+        data = FrameData(batch_size=args.batch,
+                 feature_adaptor = features_name[1],
+                 cache = args.caching_dir,
+                 copy_command = args.copy_command,                   
+                 preloading = None, #args.data_preload,
+                 frame_name=features_name[0],
+                 labels_name=labels_name,
+                )
+    else:
+   
+        data = H5Data( batch_size=args.batch,
+                       cache = args.caching_dir,
+                       copy_command = args.copy_command,                   
+                       preloading = args.data_preload,
+                       features_name=features_name,
+                       labels_name=labels_name,
+        )
     
     # We initialize the Data object with the training data list
     # so that we can use it to count the number of training examples
@@ -305,12 +307,6 @@ if __name__ == '__main__':
 
     
     data = make_loader(args, features_name, labels_name, train_list)
-    
-    #print( data )
-    #print( train_list )
-    #print( stop )
-    print( 'DATA', data.count_data() )
-    #print( stop )
     
     # Some input arguments may be ignored depending on chosen algorithm
     algo = make_algo( args, use_tf, comm, validate_every=int(data.count_data()/args.batch ))

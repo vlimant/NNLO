@@ -134,7 +134,6 @@ def to_dense(np_msg, np_counts, index, values):
             
 def batch_generator( batch ):
     
-    
     batch_size = len(batch)
     tokens_key = 'msg_encoded'
     
