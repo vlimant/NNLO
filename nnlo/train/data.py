@@ -222,11 +222,9 @@ class FrameData(Data):
             num_data += len(frame)
         return num_data        
 
-    
     def concat_data(self, data1, data2):
         return pd.concat([data1, data2])
 
-        
     def generate_data(self):
         """ 
         Overwrite the the parent generate_data and adapt to pandas frames
@@ -247,7 +245,6 @@ class FrameData(Data):
                 else:
                     leftovers = cur_frame.iloc[cur_pos : num_in_file]   
               
-            
     def get_batch(self, cur_frame, start_pos, end_pos ):
         """ 
         Convert the batch of the dataframe to a numpy array
@@ -257,7 +254,6 @@ class FrameData(Data):
         batch = cur_frame.iloc[start_pos : end_pos]
         return self.feature_adaptor( batch )
 
-    
     def finalize(self):
         if self.fpl:
             self.fpl.stop()
