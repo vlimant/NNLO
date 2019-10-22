@@ -69,7 +69,7 @@ def make_nlp_model(**args):
     sent_encoded_reshaped = Reshape(( N_CODES , N_SITES, rnn_units))(sent_encoded)
     concat_counts_sent = Concatenate(axis=3)([sent_encoded_reshaped, count_input])
     if encode_sites:
-        codes_reshaped = Reshape(( N_CODES , N_SITES * (rnn_units*N_COUNTS)))(concat_counts_sent)
+        codes_reshaped = Reshape(( N_CODES , N_SITES * (rnn_units + N_COUNTS)))(concat_counts_sent)
         sites_encoded = TimeDistributed(Dense(site_units, activation = 'relu', kernel_regularizer=l2(l2_reg)))(codes_reshaped)
         flat = Flatten()(sites_encoded)                                 
     else:
