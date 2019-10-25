@@ -36,23 +36,23 @@ def get_name():
     return 'hls4ml-gru'
 
 def get_all():
-    import socket,os,glob
-    host = os.environ.get('HOST',os.environ.get('HOSTNAME',socket.gethostname()))
+    import os,glob
 
-    if 'daint' in host:
+    if os.path.isdir('/scratch/snx3000/vlimant'):
         all_list = glob.glob('/scratch/snx3000/vlimant/data/mnist/*.h5')
-    elif 'titan' in host:
+    elif os.path.isdir('/ccs/proj/csc291/DATA/hls-fml'):
         all_list = glob.glob('/ccs/proj/csc291/DATA/hls-fml/NEWDATA/*_150p_*.h5')
-    elif 'workergpu' in host or 'rusty' in host:
+    elif os.path.isdir('/mnt/ceph/users/vlimant'):
         all_list = glob.glob('/mnt/ceph/users/vlimant/hls-fml/jetImage*_150p_*.h5')
-    elif 'popeye' in host or 'pcn' in host:
+    elif os.path.isdir('/simons/scratch/vlimant'):
         all_list = glob.glob('/simons/scratch/vlimant/JEDI/jetImage*_150p_*.h5')
-    elif 'batch' in host:
+    elif os.path.isdir('/gpfs/alpine/world-shared/'):
         all_list = glob.glob('/gpfs/alpine/world-shared/hep120/vlimant/JEDI/jetImage*_150p_*.h5')
-    else:
+    elif os.path.isdir('/storage/group/gpu/bigdata'):
         all_list = glob.glob('/storage/group/gpu/bigdata/hls-fml/NEWDATA/jetImage*_150p_*.h5')
-    #self.X =  np.array(self.f.get('jetConstituentList'))
-    #self.y = np.array(self.f.get('jets')[0:,-6:-1])
+    else:
+        all_list = []
+
     return all_list
 
 from skopt.space import Real, Integer, Categorical
