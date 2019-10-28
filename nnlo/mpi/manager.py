@@ -71,10 +71,10 @@ def get_device(comm, num_masters=1, gpu_limit=-1, gpu_for_master=False):
             elif worker_id<0:
                 ## alone on that machine
                 dev = 'gpu%d' % (gpu_list[-1])
-                logging.info("Alone on the node and taking the last gpu {}".format(dev))
+                logging.info("Alone on the node {} and taking the last gpu {}".format(host, dev))
             else:
                 dev = 'gpu%d' % (gpu_list[worker_id%len(gpu_list)])
-                logging.info("Sharing a node and taking on the gpu {}".format(dev))                
+                logging.info("Sharing a node {} and taking on the gpu {}".format(host, dev))                
             logging.debug("rank %d can have %s",rank,dev)
         comm.Barrier()
     return dev
