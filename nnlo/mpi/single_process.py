@@ -30,7 +30,6 @@ class MPISingleWorker(MPIWorker):
         Timeline.begin("train")
         self.start_time = time.time()
         self.check_sanity()
-        self.update = self.model.format_update()
 
         for epoch in range(1, self.num_epochs + 1):
             logging.info("beginning epoch {:d}".format(self.epoch + epoch))
@@ -49,10 +48,10 @@ class MPISingleWorker(MPIWorker):
                 epoch_metrics += train_metrics
 
                 ######
+                self.update = self.algo.compute_update( self.weights, self.model.get_weights() )
                 if self.algo.mode == 'gem':
                     self.update = self.algo.compute_update_worker(self.weights, self.update)
-                else:
-                    self.update = self.algo.compute_update( self.weights, self.model.get_weights() )
+
                 self.weights = self.algo.apply_update( self.weights, self.update )
                 self.algo.set_worker_model_weights( self.model, self.weights )
                 ######
