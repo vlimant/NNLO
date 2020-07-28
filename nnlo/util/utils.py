@@ -35,7 +35,7 @@ def import_keras(tries=10):
         try:
             stderr = sys.stderr
             sys.stderr = open(os.devnull, 'w')
-            import keras
+            import tensorflow.keras as keras
             sys.stderr = stderr
             return
         except ValueError:
@@ -51,7 +51,7 @@ def load_model(filename=None, model=None, weights_file=None, custom_objects={}):
         weights_file: path to HDF5 file containing model weights
 	custom_objects: A Dictionary of custom classes used in the model keyed by name"""
     import_keras()
-    from keras.models import model_from_json, clone_model
+    from tensorflow.keras.models import model_from_json, clone_model
     if filename is not None:
         with open( filename ) as arch_f:
             json_str = arch_f.readline()

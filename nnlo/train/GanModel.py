@@ -7,11 +7,11 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
-import keras
-from keras.models import Model
-from keras.layers import Input
-from keras import optimizers
-from keras.optimizers import RMSprop,SGD
+import tensorflow.keras as keras
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input
+from tensorflow.keras import optimizers
+from tensorflow.keras.optimizers import RMSprop,SGD
 #from EcalEnergyGan import generator, discriminator
 import numpy as np
 import numpy.core.umath_tests as umath
@@ -23,17 +23,16 @@ import h5py
 import logging
 
 import keras.backend as K
-from keras.models import Model, Sequential
-from keras.layers import (Input, Dense, Reshape, Flatten, Lambda, merge,
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import (Input, Dense, Reshape, Flatten, Lambda, merge,
                           Dropout, BatchNormalization, Activation, Embedding)
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import (UpSampling3D, Conv3D, ZeroPadding3D,
+from tensorflow.keras.layers.advanced_activations import LeakyReLU
+from tensorflow.keras.layers.convolutional import (UpSampling3D, Conv3D, ZeroPadding3D,
                                         AveragePooling3D)
 
 from ..train.model import MPIModel, ModelBuilder
 from .optimizer import OptimizerBuilder
 
-import keras
 kv2 = keras.__version__.startswith('2')
 
 def hn():

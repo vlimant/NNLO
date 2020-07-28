@@ -261,7 +261,7 @@ if __name__ == '__main__':
         os.environ['KERAS_BACKEND'] = 'tensorflow'
 
         import_keras()
-        import keras.backend as K
+        tf.config.gpu.set_per_process_memory_fraction(0.1)
         gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.1, #was 0.0
             allow_growth = True,
@@ -269,7 +269,7 @@ if __name__ == '__main__':
         gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.0,
             allow_growth = True,)     
-        #NTHREADS=(2,1)
+        NTHREADS=(2,1)
         NTHREADS=None
         if NTHREADS is None:
             K.set_session( K.tf.Session( config=K.tf.ConfigProto(

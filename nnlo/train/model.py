@@ -449,8 +449,6 @@ class ModelTensorFlow(ModelBuilder):
 
 
     def build_model_aux(self):
-        import keras.backend as K
-
         if type(self.filename) == list:
             models = []
             self.weights = self.weights.split(',') if self.weights else [None]*len(self.filename)
@@ -464,27 +462,26 @@ class ModelTensorFlow(ModelBuilder):
 
 
     def build_model(self, local_session = True):
-        import keras.backend as K
+        import tensorflow as tf
 
         if local_session:
-            graph = K.tf.Graph()
-            session = K.tf.Session(graph=graph, config=K.tf.ConfigProto(
+            graph = tf.Graph()
+            session = tf.compat.v1.Session(graph=graph, config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True, log_device_placement=False,
-                gpu_options=K.tf.GPUOptions(
+                gpu_options=tf.compat.v1.GPUOptions(
                         per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) )
 
             with graph.as_default():
                 with session.as_default():
-                    import keras.backend as K
                     ret_model = self.build_model_aux()
                     ret_model.session = session
                     ret_model.graph = graph
                     return ret_model
         else:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            tf.compat.v1.Session( config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True, log_device_placement=False,
-                gpu_options=K.tf.GPUOptions(
-                    per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) ) )
+                gpu_options=tf.compat.v1.GPUOptions(
+                    per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) )
             return self.build_model_aux()
 
     def get_backend_name(self):
