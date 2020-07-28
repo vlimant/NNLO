@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 from collections import defaultdict
 try:
     import cPickle as pickle
@@ -45,8 +44,6 @@ def weights(m):
         _weights_names += [ll.name for ll in layer.weights]
     _weights = m.get_weights()
     _disp = [(np.min(s),np.max(s),np.mean(s),np.std(s),s.shape,n) for s,n in zip(_weights,_weights_names)]
-    #for ii,dd in enumerate(_disp):
-    #    print (ii,dd)
 
 def weights_diff( m ,lap=True, init=False,label='', alert=None):#1000.):
     if (weights_diff.old_weights is None) or init:
@@ -61,14 +58,10 @@ def weights_diff( m ,lap=True, init=False,label='', alert=None):#1000.):
     ## make the diffs
     _diffs = [np.subtract(a,b) for (a,b) in zip(check_on_weight,and_check_on_weight)]
     _diffsN = [(np.min(s),np.max(s),np.mean(s),np.std(s),s.shape,n) for s,n in zip(_diffs,_weights_names)]
-    #print ('\n'.join(['%s'%dd for dd in _diffsN]))
     for ii,dd in enumerate(_diffsN):
         if alert:
             if not any([abs(vv) > alert for vv in dd[:3]]):
                 continue
-        #print (ii,'WD %s'%label,dd)
-        #if dd[-2] == (8,):
-        #    print ("\t",_diffs[ii])
     if lap:
         weights_diff.old_weights = m.get_weights()
 
@@ -249,16 +242,11 @@ def get_moments(images, sumsx, sumsy, sumsz, totalE, m):
 def load_sorted(sorted_path):
     sorted_files = sorted(glob.glob(sorted_path))
 
-    #print ("found sorterd files",sorted( sorted_files))
     energies = []
     srt = {}
     for f in sorted_files:
-        #print (f)
-        #energy = int(list(filter(str.isdigit, f))[:-1])
         file_name=f[f.find('sorted_'):-1]
-        #energy = int(''.join(list(filter(str.isdigit, f))[:-1]))
         energy = int(''.join(list(filter(str.isdigit, file_name))[:-1]))*10
-        #print ("found files for energy",energy)
         energies.append(energy)
         srtfile = h5py.File(f,'r')
         srt["events" + str(energy)] = np.array(srtfile.get('ECAL'))
@@ -367,22 +355,16 @@ class GANModel(MPIModel):
         self.calculate_fom = args.get('calculate_fom',True)
 
         if self.tell:
-            #print ("Generator summary")
-            #self.generator.summary()
-            #print ("Discriminator summary")
-            #self.discriminator.summary()
-            #print ("Combined summary")
-            #self.combined.summary()
             pass
-        if True:
-            if self.with_fixed_disc: print ("the batch norm weights are fixed. heavey weight re-assigning")
-            if self.checkpoint: print ("Checkpointing the model weigths after %d batch, based on the process id"%self.checkpoint)
-            if self._onepass: print ("Training in one pass")
-            if self._reversedorder: print ("will train generator first, then discriminator")
-            if self._heavycheck: print("running heavy check on weight sanity")
-            if self._show_values: print("showing the input values at each batch")
-            if self._show_loss: print("showing the loss at each batch")
-            if self._show_weights: print("showing weights statistics at each batch")
+        #if True:
+        #    if self.with_fixed_disc: print ("the batch norm weights are fixed. heavey weight re-assigning")
+        #    if self.checkpoint: print ("Checkpointing the model weigths after %d batch, based on the process id"%self.checkpoint)
+        #    if self._onepass: print ("Training in one pass")
+        #    if self._reversedorder: print ("will train generator first, then discriminator")
+        #    if self._heavycheck: print("running heavy check on weight sanity")
+        #    if self._show_values: print("showing the input values at each batch")
+        #    if self._show_loss: print("showing the loss at each batch")
+        #    if self._show_weights: print("showing weights statistics at each batch")
 
         MPIModel.__init__(self, models = [
             self.discriminator,
@@ -471,13 +453,10 @@ class GANModel(MPIModel):
 
 
     def ext_assemble_models(self):
-        #print('[INFO] Building generator')
         self.generator = generator(self.latent_size, with_bn = self.gen_bn)
-        #print('[INFO] Building discriminator')
         self.discriminator = discriminator(discr_drop_out = self.discr_drop_out)
         if self.with_fixed_disc:
             self.fixed_discriminator = discriminator(discr_drop_out = self.discr_drop_out, fixed_bn=True)
-        #print('[INFO] Building combined')
         latent = Input(shape=(self.latent_size, ), name='combined_z')
         fake_image = self.generator(latent)
         if self.with_fixed_disc:
@@ -493,7 +472,6 @@ class GANModel(MPIModel):
 
     def compile(self, **args):
         ## args are fully ignored here
-        #print('[INFO] IN GAN MODEL: COMPILE')
         if 'optimizer' in args and isinstance(args['optimizer'], OptimizerBuilder):
             opt_builder = args['optimizer']
         else:
@@ -511,7 +489,6 @@ class GANModel(MPIModel):
                 else:
                     opt = SGD(lr=lr)
 
-            #print ("optimizer for compiling",opt) 
             return opt
 
         self.generator.compile(
@@ -535,14 +512,11 @@ class GANModel(MPIModel):
             loss_weights=self.discr_loss_weights
         )
         self.combined.metrics_names = self.discriminator.metrics_names
-        #print ("disc metrics",self.discriminator.metrics_names)
-        #print ("comb metrics",self.combined.metrics_names)
 
         
         if hasattr(self, 'calculate_fom'):
             self.energies, self.g4var = self.prepare_geant4_data()
          
-        #print ("compiled")
 
     def assemble_models(self):
         self.ext_assemble_models()
@@ -553,44 +527,33 @@ class GANModel(MPIModel):
         y_disc_real =y
         show_values = self._show_values
         def mm( label, t):
-            #print (label,np.min(t),np.max(t),np.mean(t),np.std(t),t.shape)
             pass
 
         if self.batch_size is None:
             ## fix me, maybe
             self.batch_size = x_disc_real.shape[0]
-            #print (hn(),"initializing sizes",x_disc_real.shape,[ yy.shape for yy in y])
 
 
         noise = np.random.normal(0, 1, (self.batch_size, self.latent_size))
         sampled_energies = np.random.uniform(0.1, 5,(self.batch_size,1))
         generator_ip = np.multiply(sampled_energies, noise)
-        #if show_values: print ('energies',np.ravel(sampled_energies)[:10])
         if show_values: mm('energies',sampled_energies)
         ratio = np.polyval(root_fit, sampled_energies)
-        #if show_values: print ('ratios',np.ravel(ratio)[:10])
         if show_values: mm('ratios',ratio)
         ecal_ip = np.multiply(ratio, sampled_energies)
-        #if show_values: print ('estimated sum cells',np.ravel(ecal_ip)[:10])
         if show_values: mm('estimated sum cells',ecal_ip)
 
         now = time.mktime(time.gmtime())
-        #if self.p_cc>1 and len(self.p_t)%100==0:
-        #    print ("prediction average",np.mean(self.p_t),"[s]' over",len(self.p_t))
         generated_images = self.generator.predict(generator_ip)
         ecal_rip = np.squeeze(np.sum(generated_images, axis=(1, 2, 3)))
-        #if show_values: print ('generated sum cells',np.ravel(ecal_rip)[:10])
         if show_values: mm('generated sum cells',ecal_rip)
 
         norm_overflow = False
         apply_identify = False ## False was intended originally
 
         if norm_overflow and np.max( ecal_rip ) > 1000.:
-            #if show_values: print ("normalizing back")
-            #ecal_ip = ecal_rip
             generated_images /= np.max( generated_images )
             ecal_rip = np.squeeze(np.sum(generated_images, axis=(1, 2, 3)))
-            #if show_values: print ('generated sum cells',np.ravel(ecal_rip)[:10])
             if show_values: mm('generated sum cells',ecal_rip)
         elif apply_identify:
             ecal_ip = ecal_rip
@@ -624,7 +587,6 @@ class GANModel(MPIModel):
 
 
         c_noise = np.random.normal(0, 1, (2*self.batch_size, self.latent_size))
-        ###print ('noise',np.ravel(noise)[:10])
         c_sampled_energies = np.random.uniform(0.1, 5, (2*self.batch_size,1 ))
         c_generator_ip = np.multiply(c_sampled_energies, c_noise)
         c_ratio = np.polyval(root_fit, c_sampled_energies)
@@ -650,9 +612,6 @@ class GANModel(MPIModel):
             (X_for_disc,Y_for_disc,X_for_combined,Y_for_combined) = self.batch_transform(x,y)
             epoch_disc_loss = self.discriminator.test_on_batch(X_for_disc,Y_for_disc)
             epoch_gen_loss = self.combined.test_on_batch(X_for_combined,Y_for_combined)
-            #if show_loss:
-            #    print ("test discr loss",epoch_disc_loss)
-            #    print ("test combined loss",epoch_gen_loss)
         else:
             ((x_disc_real,re_y),(generated_images, y_disc_fake),(x_comb1,y_comb1),(x_comb2,y_comb2)) = self.batch_transform(x,y)
             real_disc_loss = self.discriminator.test_on_batch( x_disc_real,re_y )
@@ -662,9 +621,6 @@ class GANModel(MPIModel):
             c_loss1= self.combined.test_on_batch( x_comb1,y_comb1 )
             c_loss2= self.combined.test_on_batch(x_comb2,y_comb2 )
             epoch_gen_loss = [(a + b) / 2 for a, b in zip(c_loss1,c_loss2)]
-            #if show_loss:
-            #    print ("test discr loss",real_disc_loss,fake_disc_loss)
-            #    print ("test combined loss",c_loss1, c_loss2)
 
 
 
@@ -683,7 +639,7 @@ class GANModel(MPIModel):
     def _checkpoint(self):
         if self.checkpoint and (self.g_cc%self.checkpoint)==0:
             dest='%s/mpi_generator_%s_%s.h5'%(os.environ.get('GANCHECKPOINTLOC','.'),socket.gethostname(),os.getpid())
-            print ("Saving generator to",dest,"at",self.g_cc)
+            logging.info("Saving generator to {} at {}".format(dest, self.g_cc))
             self.generator.save_weights(dest)        
 
     def _onepass_train_on_batch(self, x, y,
@@ -707,8 +663,6 @@ class GANModel(MPIModel):
             self.discriminator.trainable = True
             now = time.mktime(time.gmtime())
             epoch_disc_loss = self.discriminator.train_on_batch(X_for_disc,Y_for_disc)
-            #if show_loss:
-            #    print (self.d_cc," discr loss",epoch_disc_loss)
             done = time.mktime(time.gmtime())
             if self.d_cc:
                 self.d_t.append( done - now )
@@ -724,13 +678,10 @@ class GANModel(MPIModel):
                 self.discriminator.trainable = False
             now = time.mktime(time.gmtime())
             if noT:
-                #print ("evaluating the combined model")
                 epoch_gen_loss = self.combined.test_on_batch(X_for_combined,Y_for_combined)
             else:
                 epoch_gen_loss = self.combined.train_on_batch(X_for_combined,Y_for_combined)
 
-            #if show_loss:
-            #    print (self.g_cc,"combined loss",epoch_gen_loss)
             done = time.mktime(time.gmtime())
             if self.g_cc:
                 self.g_t.append( done - now )
@@ -765,12 +716,6 @@ class GANModel(MPIModel):
             weights( self.combined )
 
 
-        #if len(self.g_t)>0 and len(self.g_t)%100==0:
-        #    print ("generator average ",np.mean(self.g_t),"[s] over",len(self.g_t))
-
-        #if len(self.d_t)>0 and len(self.d_t)%100==0:
-        #    print ("discriminator average",np.mean(self.d_t),"[s] over ",len(self.d_t))
-
         self._checkpoint()
 
         return np.asarray([epoch_disc_loss, epoch_gen_loss])
@@ -783,8 +728,6 @@ class GANModel(MPIModel):
 
         show_loss = self._show_loss
         show_weights = self._show_weights
-        #if self.d_cc>1 and len(self.d_t)%100==0:
-        #    print ("discriminator average",np.mean(self.d_t),"[s] over ",len(self.d_t))
         self.discriminator.trainable = True
 
         if self._heavycheck:
@@ -821,9 +764,6 @@ class GANModel(MPIModel):
             weights_diff( on_weight , label='D-fake')
 
 
-        #if show_loss:
-            #print (self.discriminator.metrics_names)
-            #print (self.d_cc,"discr loss",real_batch_loss,fake_batch_loss)
         epoch_disc_loss = np.asarray([(a + b) / 2 for a, b in zip(real_batch_loss, fake_batch_loss)])
         done = time.mktime(time.gmtime())
         if self.d_cc:
@@ -836,7 +776,6 @@ class GANModel(MPIModel):
             weights( self.combined )
 
         if self.g_cc>1 and len(self.g_t)%100==0:
-            #print ("generator average ",np.mean(self.g_t),"[s] over",len(self.g_t))
             now = time.mktime(time.gmtime())
 
         if self.g_cc:
@@ -851,9 +790,6 @@ class GANModel(MPIModel):
             if show_weights: weights( on_weight )
             weights_diff( on_weight , label='C-2')
 
-        #if show_loss:
-        #    #print(self.combined.metrics_names)
-        #    print (self.g_cc,"combined loss",c_loss1,c_loss2)
         epoch_gen_loss = np.asarray([(a + b) / 2 for a, b in zip(c_loss1,c_loss2)])
         done = time.mktime(time.gmtime())
         if self.g_cc:
@@ -870,18 +806,18 @@ class GANModel(MPIModel):
                 checks = [np.all(np.equal(a,b)) for (a,b) in zip(check_on_weight,and_check_on_weight)]
                 weights_have_changed = not all(checks)
                 weights_are_all_equal = all(checks)
-                print ('Weights are the same?',checks)
+                logging.info("Weights are the same? {}".format(str(checks)))
                 if weights_have_changed:
                     for iw,b in enumerate(checks):
                         if not b:
-                            print (iw,"This",check_on_weight[iw].shape)
-                            print (np.ravel(check_on_weight[iw])[:10])
-                            print (iw,"And that",and_check_on_weight[iw].shape)
-                            print (np.ravel(and_check_on_weight[iw])[:10])
+                            logging.info("{} This {}".format(iw,str(check_on_weight[iw].shape)))
+                            logging.info("{}".format(np.ravel(check_on_weight[iw])[:10]))
+                            logging.info("{} And that {}".format(iw,and_check_on_weight[iw].shape))
+                            logging.info("{}".format(np.ravel(and_check_on_weight[iw])[:10]))
                 else:
-                    print ("weights are all identical")
-                    print (np.ravel(and_check_on_weight[1])[:10])
-                    print (np.ravel(check_on_weight[1])[:10])
+                    logging.info("weights are all identical")
+                    logging.info("".format(str(np.ravel(and_check_on_weight[1])[:10])))
+                    logging.info("".format(str(np.ravel(check_on_weight[1])[:10])))
 
         self._checkpoint()
 
@@ -890,7 +826,7 @@ class GANModel(MPIModel):
             switching_loss = (1.,1.)
             if False and not self.recompiled and epoch_disc_loss[0]<switching_loss[0] and epoch_gen_loss[0]<switching_loss[1]:
                 ## go on
-                print ("going for full sgd")
+                logging.info("going for full sgd")
                 self.recompiled = True
                 self.compile( prop=False, lr=1.0)
                 #K.set_value( self.discriminator.optimizer.lr, 1.0)
@@ -909,13 +845,12 @@ class GANModel(MPIModel):
                     nlr = th[1]
                     break
             if abs(nlr-lr)/lr > 0.0001:
-                print ("#"*30)
-                print ("swithcing lr",lr,"to", nlr)
+                logging.info("{}".format("#"*30))
+                logging.info("swithcing lr {} to {}".format(lr, nlr))
                 K.set_value( self.discriminator.optimizer.lr, nlr)
-                print (K.get_value( self.discriminator.optimizer.lr ))
+                logging.info("{}".format(K.get_value( self.discriminator.optimizer.lr )))
                 K.set_value( self.combined.optimizer.lr, nlr)
-                print (K.get_value( self.combined.optimizer.lr ))
-                print ("#"*30)
+                logging.info("{}".format(K.get_value( self.combined.optimizer.lr )))
 
         return np.asarray([epoch_disc_loss, epoch_gen_loss])
 
@@ -946,7 +881,6 @@ class GANModel(MPIModel):
         return energies, var
 
     def figure_of_merit(self, **args):
-        #print (self.histories)
         delta_loss = np.abs(self.histories['discriminator_model']['val_classification_loss'][-1] - self.histories['combined_model']['val_classification_loss'][-1])
         return delta_loss
         

@@ -11,6 +11,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.nn.functional as F
 import numpy
+import logging
 
 class MNistNet(nn.Module):
     def __init__(self, **args):
@@ -65,7 +66,7 @@ class _DenseBlock(nn.Sequential):
         for i in range(dense_layers):
             il = int(base//(2**i))
             ol = int(base//(2**(i+1)))
-            print (il,"=>",ol)
+            logging.info("{} =>> {}".format(il,ol))
             self.add_module('denselayer%d'%(i), nn.Linear(il, ol))
             self.add_module('relu%d'%(i), nn.ReLU(inplace=True))
         self.dropout = dropout
@@ -89,7 +90,7 @@ class CNN(nn.Module):
         self.adapt_pool = nn.AdaptiveMaxPool2d((base_2,base_2))
         il = int(base//(2**(args[1])))
         ol = int(args[3])
-        print (il,"=>",ol)
+        logging.info("{} =>> {}".format(il,ol))
         self.output = nn.Linear(il, ol)
 
     def forward(self, x):

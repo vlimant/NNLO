@@ -1,6 +1,7 @@
 *.pyc
 *.swp
-*.json
 *.h5
-*.txt
 .DS_Store
+build/
+dist/
+nnlo.egg-info/

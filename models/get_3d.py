@@ -1,16 +1,16 @@
 import os
 import glob
+import logging
 try:
     import h5py
     pass
 except:
-    print ("hum")
+    logging.info("import h5py failed")
 import numpy as np
 import sys
 
 def get_data(datafile):
     #get data for training
-    #print ('Loading Data from .....', datafile)
     f=h5py.File(datafile,'r')
     y=f.get('target')
     X=np.array(f.get('ECAL'))
@@ -21,9 +21,7 @@ def get_data(datafile):
     y = y.astype(np.float32)
     y = y/100.
     ecal = np.squeeze(np.sum(X, axis=(1, 2, 3)))
-    print (X.shape)
-    print (y.shape)
-    print (ecal.shape)
+    logging.info("X shape {}; y shape {}; ecal shape {}".format(str(X.shape)), str(y.shape), str(ecal.shape))
 
     f.close()
     return X, y, ecal
@@ -46,7 +44,7 @@ for F in glob.glob('/bigdata/shared/LCD/NewV1/*scan/*.h5'):
         nf = '%s/%s_%s.h5'%( dest,d,f)
         if os.path.isfile( nf) :
             continue
-        print ("processing files",F,"into",nf)
+        logging.info("processing files {} into {}".format(F,nf))
         if X is None:
             X,y,ecal = get_data(F)
         o = h5py.File(nf,'w')
@@ -61,7 +59,7 @@ for F in glob.glob('/bigdata/shared/LCD/NewV1/*scan/*.h5'):
             nf = '%s/%s_%s_sub%s.h5'%(dest, d,f,sub)
             if os.path.isfile( nf) :
                 continue
-            print ("processing files",F,"into",nf)
+            logging.info("processing files {} into {}".format(F,nf))
             if X is None:
                 X,y,ecal = get_data(F)
                 N = X.shape[0]
