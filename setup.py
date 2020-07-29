@@ -8,7 +8,7 @@ with open('HISTORY.md') as history_file:
 
 setup_args = dict(
     name='nnlo',
-    version='0.0.1',
+    version='0.0.3',
     description='Distributed Machine Learning tool for High Performance Computing',
     long_description_content_type="text/markdown",
     long_description=README + '\n\n' + HISTORY,
@@ -22,8 +22,6 @@ setup_args = dict(
 )
 
 install_requires = [
-    'tensorflow>=2',
-    'mpi4py>3'
 ]
 
 if __name__ == '__main__':

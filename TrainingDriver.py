@@ -234,7 +234,8 @@ if __name__ == '__main__':
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
+    print('nnlo.'+args.model.replace('.py','').replace('/', '.'))
+    m_module = __import__('nnlo.'+args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
     (features_name, labels_name) = make_features_labels(m_module, args)
     (train_list, val_list) = make_train_val_lists(m_module, args)
     comm = MPI.COMM_WORLD.Dup()
@@ -260,29 +261,33 @@ if __name__ == '__main__':
         logging.debug("Using TensorFlow")
         os.environ['KERAS_BACKEND'] = 'tensorflow'
 
+        import tensorflow as tf
         import_keras()
-        tf.config.gpu.set_per_process_memory_fraction(0.1)
-        gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.1, #was 0.0
-            allow_growth = True,
-            visible_device_list = device[-1] if 'gpu' in device else '')
-        gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)     
-        NTHREADS=(2,1)
-        NTHREADS=None
-        if NTHREADS is None:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-                allow_soft_placement=True, log_device_placement=False,
-                gpu_options=gpu_options
-            ) ) )
-        else:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-                allow_soft_placement=True, log_device_placement=False,
-                gpu_options=gpu_options,
-                intra_op_parallelism_threads=NTHREADS[0], 
-                inter_op_parallelism_threads=NTHREADS[1],
-            ) ) )
+        #gpu_options=K.tf.GPUOptions(
+        #    per_process_gpu_memory_fraction=0.1, #was 0.0
+        #    allow_growth = True,
+        #    visible_device_list = device[-1] if 'gpu' in device else '')
+        #gpu_options=K.tf.GPUOptions(
+        #    per_process_gpu_memory_fraction=0.0,
+        #    allow_growth = True,)     
+        gpu_devices = tf.config.experimental.list_physical_devices('GPU')
+        for device in gpu_devices:
+            tf.config.experimental.set_memory_growth(device, True)
+
+        #NTHREADS=(2,1)
+        #NTHREADS=None
+        #if NTHREADS is None:
+        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        #        allow_soft_placement=True, log_device_placement=False,
+        #        gpu_options=gpu_options
+        #    ) ) )
+        #else:
+        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        #        allow_soft_placement=True, log_device_placement=False,
+        #        gpu_options=gpu_options,
+        #        intra_op_parallelism_threads=NTHREADS[0], 
+        #        inter_op_parallelism_threads=NTHREADS[1],
+        #    ) ) )
         
 
         model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
