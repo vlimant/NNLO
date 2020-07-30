@@ -12,6 +12,7 @@ import glob
 
 from mpi4py import MPI
 from time import time,sleep
+import importlib
 
 from nnlo.mpi.manager import MPIManager, get_device
 from nnlo.train.algo import Algo
@@ -27,6 +28,7 @@ def add_log_option(parser):
     # logging configuration
     parser.add_argument('--log-file', default=None, dest='log_file', help='log file to write, in additon to output stream')
     parser.add_argument('--log-level', default='info', dest='log_level', help='log level (debug, info, warn, error)')
+    parser.add_argument('--output', default='./', dest='output', help='output folder')
 
 def add_master_option(parser):
     parser.add_argument('--master-gpu',help='master process should get a gpu',
@@ -89,7 +91,7 @@ def add_train_options(parser):
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('--model', help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', choices=['mnist'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
@@ -225,7 +227,7 @@ def make_features_labels(m_module, args):
     labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
     return (features_name, labels_name)
 
-if __name__ == '__main__':
+def main():
     parser = make_train_parser()
     args = parser.parse_args()    
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
@@ -234,8 +236,14 @@ if __name__ == '__main__':
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    print('nnlo.'+args.model.replace('.py','').replace('/', '.'))
-    m_module = __import__('nnlo.'+args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
+    m_module, model_source = None, None
+    if args.model == 'mnist':
+        try:
+            m_module = importlib.import_module(f'nnlo.examples.example_mnist')
+            model_source = 'examples/example_mnist.py'
+        except Exception as e:
+            logging.fatal(e)
+
     (features_name, labels_name) = make_features_labels(m_module, args)
     (train_list, val_list) = make_train_val_lists(m_module, args)
     comm = MPI.COMM_WORLD.Dup()
@@ -256,13 +264,14 @@ if __name__ == '__main__':
 
     if use_torch:
         logging.debug("Using pytorch")
-        model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
+        model_builder = ModelPytorch(comm, source=model_source, weights=model_weights, gpus=1 if 'gpu' in device else 0)
     else:
         logging.debug("Using TensorFlow")
         os.environ['KERAS_BACKEND'] = 'tensorflow'
 
         import tensorflow as tf
         import_keras()
+        #tf.config.gpu.set_per_process_memory_fraction(0.1)
         #gpu_options=K.tf.GPUOptions(
         #    per_process_gpu_memory_fraction=0.1, #was 0.0
         #    allow_growth = True,
@@ -290,7 +299,7 @@ if __name__ == '__main__':
         #    ) ) )
         
 
-        model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
+        model_builder = ModelTensorFlow( comm, source=model_source, weights=model_weights)
 
 
     data = make_loader(args, features_name, labels_name, train_list)
@@ -318,8 +327,8 @@ if __name__ == '__main__':
     else:
         model_name = os.path.basename(args.model).replace('.json','')
 
-    json_name = '_'.join([model_name,args.trial_name,"history.json"])
-    tl_json_name = '_'.join([model_name,args.trial_name,"timeline.json"])
+    json_name = args.output + '/' + '_'.join([model_name,args.trial_name,"history.json"])
+    tl_json_name = args.output + '/' + '_'.join([model_name,args.trial_name,"timeline.json"])
 
     # Process 0 launches the training procedure
     if comm.Get_rank() == 0:
@@ -338,3 +347,6 @@ if __name__ == '__main__':
     comm.barrier()
     logging.info("Terminating")
     if args.timeline: Timeline.collect(clean=True, file_name=tl_json_name)
+
+if __name__ == '__main__':
+    main()
