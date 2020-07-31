@@ -8,9 +8,10 @@ with open('HISTORY.md') as history_file:
 
 setup_args = dict(
     name='nnlo',
-    version='0.0.3',
+    version='0.0.4',
     entry_points = {
         'console_scripts': ['TrainingDriver=nnlo.driver.TrainingDriver:main'],
+        'console_scripts': ['GetData=nnlo.models.getdata:main'],
     },
     description='Distributed Machine Learning tool for High Performance Computing',
     long_description_content_type="text/markdown",
