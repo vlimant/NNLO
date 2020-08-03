@@ -1,4 +1,4 @@
-from nnlo.models.Models import make_cifar10_model
+from nnlo.models.model_cifar10_tf import make_cifar10_model
 
 get_model = make_cifar10_model
 def get_name():
