@@ -443,6 +443,7 @@ class ModelTensorFlow(ModelBuilder):
         else:
             self.filename = None
             self.model = source
+        logging.debug("Get model {0} from file {1}".format(self.model, self.filename))
         self.weights = weights
         self.custom_objects = custom_objects
         super(ModelTensorFlow, self).__init__(comm)

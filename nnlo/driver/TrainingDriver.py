@@ -91,7 +91,7 @@ def add_train_options(parser):
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('--model', choices=['mnist'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', choices=['mnist', 'cifar10'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
@@ -241,6 +241,12 @@ def main():
         try:
             m_module = importlib.import_module(f'nnlo.examples.example_mnist')
             model_source = 'examples/example_mnist.py'
+        except Exception as e:
+            logging.fatal(e)
+    elif args.model == 'cifar10':
+        try:
+            m_module = importlib.import_module(f'nnlo.examples.example_cifar10')
+            model_source = 'examples/example_cifar10.py'
         except Exception as e:
             logging.fatal(e)
 

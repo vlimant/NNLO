@@ -108,7 +108,7 @@ def make_cifar10_model(**args):
     dense1 = args.get('dense1', 512)
     dense2 = args.get('dense2', 256)
     
-    if tensorflow.keras.backend.image_data_format() == 'channels_first':
+    if K.image_data_format() == 'channels_first':
         input_shape = (3, img_rows, img_cols)
     else:
         input_shape = (img_rows, img_cols, 3)
@@ -145,7 +145,6 @@ def make_cifar10_model(**args):
     return model
 
 def make_mnist_model(**args):
-    import tensorflow
     from tensorflow.keras.models import Sequential, Model
     from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Conv2D
@@ -167,7 +166,7 @@ def make_mnist_model(**args):
     dense = args.get('dense', 128)
 
     pool_size = (ps,ps)
-    if tensorflow.keras.backend.image_data_format() == 'channels_first':
+    if K.image_data_format() == 'channels_first':
         input_shape = (1, img_rows, img_cols)
     else:
         input_shape = (img_rows, img_cols, 1)

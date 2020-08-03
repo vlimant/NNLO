@@ -7,6 +7,7 @@ from tensorflow.python.keras.utils import np_utils
 from tensorflow.python.keras import backend as K
 import h5py
 import sys
+import os
 
 def main(argv):
     (X_train, Y_train), (X_test, Y_test) = cifar10.load_data()
@@ -37,7 +38,7 @@ def main(argv):
         train_outfile.create_dataset( "features", data=split_X_train[i] )
         train_outfile.create_dataset( "labels", data=split_Y_train[i] )
         train_outfile.close()
-    with open('train_cifar10.list', 'w') as train_list_file:
+    with open(f'{os.getcwd()}/train_cifar10.list', 'w') as train_list_file:
         for f in train_list:
             train_list_file.write(f)
     
@@ -49,7 +50,7 @@ def main(argv):
         test_outfile.create_dataset( "features", data=split_X_test[i] )
         test_outfile.create_dataset( "labels", data=split_Y_test[i] )
         test_outfile.close()
-    with open('test_cifar10.list', 'w') as test_list_file:
+    with open(f'{os.getcwd()}/test_cifar10.list', 'w') as test_list_file:
         for f in test_list:
             test_list_file.write(f)
 
