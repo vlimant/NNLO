@@ -8,7 +8,7 @@ with open('HISTORY.md') as history_file:
 
 setup_args = dict(
     name='nnlo',
-    version='0.0.4',
+    version='0.0.5',
     entry_points = {
         'console_scripts': ['TrainingDriver=nnlo.driver.TrainingDriver:main',
             'GetData=nnlo.models.getdata:main',
@@ -28,6 +28,7 @@ setup_args = dict(
 )
 
 install_requires = [
+    'scikit-optimize',
 ]
 
 if __name__ == '__main__':

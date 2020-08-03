@@ -1,4 +1,4 @@
-from nnlo.models.Models import make_mnist_model
+from nnlo.models.model_mnist_tf import make_mnist_model
 
 get_model = make_mnist_model
 def get_name():
