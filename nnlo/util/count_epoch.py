@@ -5,10 +5,11 @@
 import json
 import logging
 import sys
+import pandas as pd
 
 def main():
     logging.basicConfig(level = logging.INFO)
-    filenames = []
+    filename, rows_list = [], []
     try:
         filenames = sys.argv[1:]
     except:
@@ -17,11 +18,24 @@ def main():
     for filename in filenames:
         with open(filename) as f:
             data = json.load(f)
-        
+        name = filename.split('_')[1]
+        dic = {
+            'file': filename,
+            'ranks': int(name[name.find('n')+1:name.find('g')]),
+            'trainTime': data["train_time"],
+        }
         try:
-            logging.info(f'{filename} epochs {len(data["history"]["0:0:-"]["val_loss"])} val_loss {data["history"]["0:0:-"]["val_loss"][-10]}')
+            dic['val_loss'] = data["history"][r"0:0:-"]["val_loss"][-10]
+            dic['val_accuracy'] = data["history"][r"0:0:-"]["val_accuracy"][-10]
+            dic['epochs'] = len(data["history"][r"0:0:-"]["val_loss"])
         except:
-            logging.info(f'{filename} epochs {len(data["history"]["0:-:-"]["val_loss"])} val_loss {data["history"]["0:-:-"]["val_loss"][-10]}')
+            dic['val_loss'] = data["history"][r"0:-:-"]["val_loss"][-10]
+            dic['val_accuracy'] = data["history"][r"0:-:-"]["val_accuracy"][-10]
+            dic['epochs'] = len(data["history"][r"0:-:-"]["val_loss"])
+        rows_list.append(dic)
+
+    df = pd.DataFrame(rows_list).sort_values('ranks')
+    logging.info(f'\n{df}')
 
 if __name__ == '__main__':
     main()
