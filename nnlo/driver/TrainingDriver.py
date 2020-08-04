@@ -96,8 +96,8 @@ def add_train_options(parser):
             default='train', dest='trial_name')
 
     # training data arguments
-    parser.add_argument('--train_data', help='text file listing data inputs for training', default=None)
-    parser.add_argument('--val_data', help='text file lis`ting data inputs for validation', default=None)
+    parser.add_argument('--train_data', help='text file listing data inputs for training', required=True)
+    parser.add_argument('--val_data', help='text file lis`ting data inputs for validation', required=True)
     parser.add_argument('--features-name', help='name of HDF5 dataset with input features',
             default='features', dest='features_name')
     parser.add_argument('--labels-name', help='name of HDF5 dataset with output labels',
@@ -200,32 +200,17 @@ def make_algo( args, use_tf, comm, validate_every ):
 
 def make_train_val_lists(m_module, args):
     train_list = val_list = []
-    if args.train_data:
-        with open(args.train_data) as train_list_file:
-            train_list = [ s.strip() for s in train_list_file.readlines() ]
-    elif m_module is not None:
-        train_list = m_module.get_train()
-    else:
-        logging.info("no training data provided")
+    with open(args.train_data) as train_list_file:
+        train_list = [ s.strip() for s in train_list_file.readlines() ]
         
-    if args.val_data:
-        with open(args.val_data) as val_list_file:
-            val_list = [ s.strip() for s in val_list_file.readlines() ]
-    elif m_module is not None:
-        val_list = m_module.get_val()
-    else:
-        logging.info("no validation data provided")
+    with open(args.val_data) as val_list_file:
+        val_list = [ s.strip() for s in val_list_file.readlines() ]
 
     if not train_list:
         logging.error("No training data provided")
     if not val_list:
         logging.error("No validation data provided")
     return (train_list, val_list) 
-
-def make_features_labels(m_module, args):
-    features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
-    labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
-    return (features_name, labels_name)
 
 def main():
     parser = make_train_parser()
@@ -250,7 +235,7 @@ def main():
     except Exception as e:
         logging.fatal(e)
 
-    (features_name, labels_name) = make_features_labels(m_module, args)
+    (features_name, labels_name) = args.features_name, args.labels_name
     (train_list, val_list) = make_train_val_lists(m_module, args)
     comm = MPI.COMM_WORLD.Dup()
 

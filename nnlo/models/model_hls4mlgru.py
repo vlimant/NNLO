@@ -1,6 +1,6 @@
 #from keras.activations import relu, selu, elu
-from keras.models import Model, Sequential
-from keras.layers import Dense, Input, GRU, Dropout, Flatten, Permute
+from keras.models import Model
+from keras.layers import Dense, Input, GRU, Dropout, Permute
 import numpy as np
 
 def get_model(**args):

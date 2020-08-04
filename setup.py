@@ -8,7 +8,7 @@ with open('HISTORY.md') as history_file:
 
 setup_args = dict(
     name='nnlo',
-    version='0.0.5',
+    version='0.0.7',
     entry_points = {
         'console_scripts': ['TrainingDriver=nnlo.driver.TrainingDriver:main',
             'GetData=nnlo.data.getdata:main',
