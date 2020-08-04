@@ -21,7 +21,7 @@ from nnlo.util.logger import initialize_logger
 import socket
 
 
-if __name__ == '__main__':
+def main():
     from TrainingDriver import add_loader_options
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose',help='display metrics for each training batch',action='store_true')
@@ -162,3 +162,6 @@ if __name__ == '__main__':
 
     comm.Barrier()
     logging.info("Terminating")
+
+if __name__ == '__main__':
+    main()

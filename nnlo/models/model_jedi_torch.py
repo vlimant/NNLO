@@ -213,7 +213,6 @@ def get_labels():
 
 
 if __name__ == "__main__":
-    print("do the data conversion")
     import glob
     import h5py
     import numpy as np
@@ -230,5 +229,4 @@ if __name__ == "__main__":
         fo['X'] = X
         fo['Y'] = Y
         fo.close()
-        print(f,"converted")
         

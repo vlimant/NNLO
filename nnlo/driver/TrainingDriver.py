@@ -12,6 +12,7 @@ import glob
 
 from mpi4py import MPI
 from time import time,sleep
+import importlib
 
 from nnlo.mpi.manager import MPIManager, get_device
 from nnlo.train.algo import Algo
@@ -27,6 +28,7 @@ def add_log_option(parser):
     # logging configuration
     parser.add_argument('--log-file', default=None, dest='log_file', help='log file to write, in additon to output stream')
     parser.add_argument('--log-level', default='info', dest='log_level', help='log level (debug, info, warn, error)')
+    parser.add_argument('--output', default='./', dest='output', help='output folder')
 
 def add_master_option(parser):
     parser.add_argument('--master-gpu',help='master process should get a gpu',
@@ -89,13 +91,13 @@ def add_train_options(parser):
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('--model', help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', choices=['mnist', 'mnist_torch', 'cifar10', 'cifar10_torch'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
     # training data arguments
-    parser.add_argument('--train_data', help='text file listing data inputs for training', default=None)
-    parser.add_argument('--val_data', help='text file lis`ting data inputs for validation', default=None)
+    parser.add_argument('--train_data', help='text file listing data inputs for training', required=True)
+    parser.add_argument('--val_data', help='text file lis`ting data inputs for validation', required=True)
     parser.add_argument('--features-name', help='name of HDF5 dataset with input features',
             default='features', dest='features_name')
     parser.add_argument('--labels-name', help='name of HDF5 dataset with output labels',
@@ -198,21 +200,11 @@ def make_algo( args, use_tf, comm, validate_every ):
 
 def make_train_val_lists(m_module, args):
     train_list = val_list = []
-    if args.train_data:
-        with open(args.train_data) as train_list_file:
-            train_list = [ s.strip() for s in train_list_file.readlines() ]
-    elif m_module is not None:
-        train_list = m_module.get_train()
-    else:
-        logging.info("no training data provided")
+    with open(args.train_data) as train_list_file:
+        train_list = [ s.strip() for s in train_list_file.readlines() ]
         
-    if args.val_data:
-        with open(args.val_data) as val_list_file:
-            val_list = [ s.strip() for s in val_list_file.readlines() ]
-    elif m_module is not None:
-        val_list = m_module.get_val()
-    else:
-        logging.info("no validation data provided")
+    with open(args.val_data) as val_list_file:
+        val_list = [ s.strip() for s in val_list_file.readlines() ]
 
     if not train_list:
         logging.error("No training data provided")
@@ -220,12 +212,7 @@ def make_train_val_lists(m_module, args):
         logging.error("No validation data provided")
     return (train_list, val_list) 
 
-def make_features_labels(m_module, args):
-    features_name = m_module.get_features() if m_module is not None and hasattr(m_module,"get_features") else args.features_name
-    labels_name = m_module.get_labels() if m_module is not None and hasattr(m_module,"get_labels") else args.labels_name
-    return (features_name, labels_name)
-
-if __name__ == '__main__':
+def main():
     parser = make_train_parser()
     args = parser.parse_args()    
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
@@ -234,8 +221,21 @@ if __name__ == '__main__':
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    m_module = __import__(args.model.replace('.py','').replace('/', '.'), fromlist=[None]) if '.py' in args.model else None
-    (features_name, labels_name) = make_features_labels(m_module, args)
+    m_module, model_source = None, None
+    try:
+        if args.model == 'mnist':
+            m_module = importlib.import_module(f'nnlo.models.model_mnist_tf')
+            model_source = 'models/model_mnist_tf.py'
+        elif args.model == 'mnist_torch':
+            m_module = importlib.import_module(f'nnlo.models.model_mnist_torch')
+            model_source = 'models/model_mnist_torch.py'
+        elif args.model == 'cifar10':
+            m_module = importlib.import_module(f'nnlo.models.model_cifar10_tf')
+            model_source = 'models/model_cifar10_tf.py'
+    except Exception as e:
+        logging.fatal(e)
+
+    (features_name, labels_name) = args.features_name, args.labels_name
     (train_list, val_list) = make_train_val_lists(m_module, args)
     comm = MPI.COMM_WORLD.Dup()
 
@@ -255,37 +255,42 @@ if __name__ == '__main__':
 
     if use_torch:
         logging.debug("Using pytorch")
-        model_builder = ModelPytorch(comm, source=args.model, weights=model_weights, gpus=1 if 'gpu' in device else 0)
+        model_builder = ModelPytorch(comm, source=model_source, weights=model_weights, gpus=1 if 'gpu' in device else 0)
     else:
         logging.debug("Using TensorFlow")
         os.environ['KERAS_BACKEND'] = 'tensorflow'
 
+        import tensorflow as tf
         import_keras()
-        import keras.backend as K
-        gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.1, #was 0.0
-            allow_growth = True,
-            visible_device_list = device[-1] if 'gpu' in device else '')
-        gpu_options=K.tf.GPUOptions(
-            per_process_gpu_memory_fraction=0.0,
-            allow_growth = True,)     
+        #tf.config.gpu.set_per_process_memory_fraction(0.1)
+        #gpu_options=K.tf.GPUOptions(
+        #    per_process_gpu_memory_fraction=0.1, #was 0.0
+        #    allow_growth = True,
+        #    visible_device_list = device[-1] if 'gpu' in device else '')
+        #gpu_options=K.tf.GPUOptions(
+        #    per_process_gpu_memory_fraction=0.0,
+        #    allow_growth = True,)     
+        gpu_devices = tf.config.experimental.list_physical_devices('GPU')
+        for device in gpu_devices:
+            tf.config.experimental.set_memory_growth(device, True)
+
         #NTHREADS=(2,1)
-        NTHREADS=None
-        if NTHREADS is None:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-                allow_soft_placement=True, log_device_placement=False,
-                gpu_options=gpu_options
-            ) ) )
-        else:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-                allow_soft_placement=True, log_device_placement=False,
-                gpu_options=gpu_options,
-                intra_op_parallelism_threads=NTHREADS[0], 
-                inter_op_parallelism_threads=NTHREADS[1],
-            ) ) )
+        #NTHREADS=None
+        #if NTHREADS is None:
+        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        #        allow_soft_placement=True, log_device_placement=False,
+        #        gpu_options=gpu_options
+        #    ) ) )
+        #else:
+        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+        #        allow_soft_placement=True, log_device_placement=False,
+        #        gpu_options=gpu_options,
+        #        intra_op_parallelism_threads=NTHREADS[0], 
+        #        inter_op_parallelism_threads=NTHREADS[1],
+        #    ) ) )
         
 
-        model_builder = ModelTensorFlow( comm, source=args.model, weights=model_weights)
+        model_builder = ModelTensorFlow( comm, source=model_source, weights=model_weights)
 
 
     data = make_loader(args, features_name, labels_name, train_list)
@@ -313,8 +318,8 @@ if __name__ == '__main__':
     else:
         model_name = os.path.basename(args.model).replace('.json','')
 
-    json_name = '_'.join([model_name,args.trial_name,"history.json"])
-    tl_json_name = '_'.join([model_name,args.trial_name,"timeline.json"])
+    json_name = args.output + '/' + '_'.join([model_name,args.trial_name,"history.json"])
+    tl_json_name = args.output + '/' + '_'.join([model_name,args.trial_name,"timeline.json"])
 
     # Process 0 launches the training procedure
     if comm.Get_rank() == 0:
@@ -333,3 +338,6 @@ if __name__ == '__main__':
     comm.barrier()
     logging.info("Terminating")
     if args.timeline: Timeline.collect(clean=True, file_name=tl_json_name)
+
+if __name__ == '__main__':
+    main()
