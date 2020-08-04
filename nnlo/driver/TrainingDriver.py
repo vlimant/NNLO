@@ -91,7 +91,7 @@ def add_train_options(parser):
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('--model', choices=['mnist', 'cifar10'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', choices=['mnist', 'mnist_torch', 'cifar10', 'cifar10_torch'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
@@ -237,18 +237,18 @@ def main():
         a_backend = 'torch'
         
     m_module, model_source = None, None
-    if args.model == 'mnist':
-        try:
+    try:
+        if args.model == 'mnist':
             m_module = importlib.import_module(f'nnlo.models.model_mnist_tf')
             model_source = 'models/model_mnist_tf.py'
-        except Exception as e:
-            logging.fatal(e)
-    elif args.model == 'cifar10':
-        try:
+        elif args.model == 'mnist_torch':
+            m_module = importlib.import_module(f'nnlo.models.model_mnist_torch')
+            model_source = 'models/model_mnist_torch.py'
+        elif args.model == 'cifar10':
             m_module = importlib.import_module(f'nnlo.models.model_cifar10_tf')
             model_source = 'models/model_cifar10_tf.py'
-        except Exception as e:
-            logging.fatal(e)
+    except Exception as e:
+        logging.fatal(e)
 
     (features_name, labels_name) = make_features_labels(m_module, args)
     (train_list, val_list) = make_train_val_lists(m_module, args)

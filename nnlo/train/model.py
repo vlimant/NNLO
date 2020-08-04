@@ -356,8 +356,10 @@ class MPITModel(MPIModel):
         if self.gpus > 0:
             x = x.cuda()
             target = target.cuda()
-        pred = self.model.forward(Variable(x, volatile=True))
-        loss = self.loss(pred, Variable(target, volatile=True))
+        import torch
+        with torch.no_grad():
+            pred = self.model.forward(Variable(x))
+            loss = self.loss(pred, Variable(target))
         l_data = loss.data.numpy() if self.gpus == 0 else loss.data.cpu().numpy()
         self.metrics = [l_data] if l_data.shape==() else [l_data[0]]        
         if 'acc' in self.metrics_names: # compute the accuracy
@@ -495,7 +497,7 @@ class ModelPytorch(ModelBuilder):
         super(ModelPytorch,self).__init__(comm)
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__(source.replace('.py','').replace('/', '.'), fromlist=[None])
+                module = __import__('nnlo.'+source.replace('.py','').replace('/', '.'), fromlist=[None])
                 self.model = module.get_model()
                 self.filename = None
             else:
