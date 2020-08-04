@@ -239,14 +239,14 @@ def main():
     m_module, model_source = None, None
     if args.model == 'mnist':
         try:
-            m_module = importlib.import_module(f'nnlo.examples.example_mnist')
-            model_source = 'examples/example_mnist.py'
+            m_module = importlib.import_module(f'nnlo.models.model_mnist_tf')
+            model_source = 'models/model_mnist_tf.py'
         except Exception as e:
             logging.fatal(e)
     elif args.model == 'cifar10':
         try:
-            m_module = importlib.import_module(f'nnlo.examples.example_cifar10')
-            model_source = 'examples/example_cifar10.py'
+            m_module = importlib.import_module(f'nnlo.models.model_cifar10_tf')
+            model_source = 'models/model_cifar10_tf.py'
         except Exception as e:
             logging.fatal(e)
 

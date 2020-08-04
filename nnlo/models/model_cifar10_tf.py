@@ -2,7 +2,10 @@
 # Rui Zhang 8.2020
 # rui.zhang@cern.ch
 
-def make_cifar10_model(**args):
+def get_name():
+    return 'cifar10'
+
+def get_model(**args):
     from tensorflow.keras.models import Sequential, Model
     from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Conv2D
@@ -68,7 +71,7 @@ def make_cifar10_model(**args):
     return model
 
 from skopt.space import Real, Integer, Categorical
-make_cifar10_model.parameter_range = [
+get_model.parameter_range = [
     Integer(10,300, name='nb_filters1'),
     Integer(10,300, name='nb_filters2'),
     Integer(10,300, name='nb_filters3'),

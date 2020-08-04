@@ -2,7 +2,10 @@
 # Rui Zhang 8.2020
 # rui.zhang@cern.ch
 
-def make_mnist_model(**args):
+def get_name():
+    return 'mnist'
+
+def get_model(**args):
     from tensorflow.keras.models import Sequential, Model
     from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute
     from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Conv2D
@@ -46,7 +49,7 @@ def make_mnist_model(**args):
     return model
 
 from skopt.space import Real, Integer, Categorical
-make_mnist_model.parameter_range =     [
+get_model.parameter_range =     [
     Integer(10,50, name='nb_filters'),
     Integer(2,10, name='pool_size'),
     Integer(2,10, name='kernel_size'),
