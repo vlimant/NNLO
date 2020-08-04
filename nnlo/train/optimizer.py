@@ -647,7 +647,7 @@ class OptimizerBuilder(object):
         self.horovod_wrapper = horovod_wrapper
 
     def build(self):
-        from keras.optimizers import deserialize
+        from tensorflow.keras.optimizers import deserialize
         opt_config = {'class_name': self.name, 'config': self.config}
         opt = deserialize(opt_config)
         if self.horovod_wrapper:

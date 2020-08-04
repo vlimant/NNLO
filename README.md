@@ -10,36 +10,38 @@ The original package was implemented by [Dustin Anderson](https://github.com/dua
 
 Test with the MNIST dataset, with keras+tensorflow
 ```
-git clone https://github.com/vlimant/NNLO.git
+pip install nnlo
 cd NNLO
 ```
 Example with mnist provided in a python file
 ```
-python3 models/get_mnist.py
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+GetData mnist
+mpirun -np 3 TrainingDriver --model mnist --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
+mpirun -np 3 python TrainingDriver.py --model examples/example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+jsrun -n 3 -g 1 TrainingDriver --model mnist --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
 ```
 
 Example with the cifar10 with model json
 ```
-python3 models/BuildModel.py cifar10
+GetData cifar10
 python3 models/get_cifar10.py
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
+mpirun -np 3 TrainingDriver --model cifar10 --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_cifar10.list --val_data /path/to/test_cifar10.list
+jsrun -n 3 -g 1 TrainingDriver --model cifar10 --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_cifar10.list --val_data /path/to/test_cifar10.list
 ```
 
 Example of training mnist with 2 workers, each with 2 process per Horovod ring
 ```
-mpirun -np 5 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --n-processes 2
+mpirun -np 5 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --n-processes 2
 ```
 
 Example of training mnist with early stopping
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
+mpirun -np 3 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
 ```
 
 Example of training with a fixed target
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
+mpirun -np 3 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
 ```
 
 ## GAN Examples (experimental)

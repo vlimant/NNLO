@@ -1,8 +1,4 @@
-from models.Models import make_mnist_model
-
-get_model = make_mnist_model
-def get_name():
-    return 'mnist'
+from nnlo.models.model_mnist_tf import make_mnist_model
 
 def get_all():
     import socket,os,glob

@@ -105,9 +105,7 @@ def make_opt_parser():
     
     return parser
 
-
-if __name__ == '__main__':
-
+def main():
     logging.info("Process is on {}".format(socket.gethostname()))
     parser = make_opt_parser()
     args = parser.parse_args()
@@ -323,3 +321,6 @@ if __name__ == '__main__':
                              checkpoint=args.checkpoint,
                              checkpoint_interval=args.checkpoint_interval)
         block.run()
+
+if __name__ == '__main__':
+    main()

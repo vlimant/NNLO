@@ -356,8 +356,10 @@ class MPITModel(MPIModel):
         if self.gpus > 0:
             x = x.cuda()
             target = target.cuda()
-        pred = self.model.forward(Variable(x, volatile=True))
-        loss = self.loss(pred, Variable(target, volatile=True))
+        import torch
+        with torch.no_grad():
+            pred = self.model.forward(Variable(x))
+            loss = self.loss(pred, Variable(target))
         l_data = loss.data.numpy() if self.gpus == 0 else loss.data.cpu().numpy()
         self.metrics = [l_data] if l_data.shape==() else [l_data[0]]        
         if 'acc' in self.metrics_names: # compute the accuracy
@@ -434,7 +436,7 @@ class ModelTensorFlow(ModelBuilder):
             custom_objects={}, weights=None):
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__(source.replace('.py','').replace('/', '.'), fromlist=[None])
+                module = __import__('nnlo.'+source.replace('.py','').replace('/', '.'), fromlist=[None])
                 self.model = module.get_model()
                 self.filename = None
             else:
@@ -443,14 +445,13 @@ class ModelTensorFlow(ModelBuilder):
         else:
             self.filename = None
             self.model = source
+        logging.debug("Get model {0} from file {1}".format(self.model, self.filename))
         self.weights = weights
         self.custom_objects = custom_objects
         super(ModelTensorFlow, self).__init__(comm)
 
 
     def build_model_aux(self):
-        import keras.backend as K
-
         if type(self.filename) == list:
             models = []
             self.weights = self.weights.split(',') if self.weights else [None]*len(self.filename)
@@ -464,27 +465,26 @@ class ModelTensorFlow(ModelBuilder):
 
 
     def build_model(self, local_session = True):
-        import keras.backend as K
+        import tensorflow as tf
 
         if local_session:
-            graph = K.tf.Graph()
-            session = K.tf.Session(graph=graph, config=K.tf.ConfigProto(
+            graph = tf.Graph()
+            session = tf.compat.v1.Session(graph=graph, config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True, log_device_placement=False,
-                gpu_options=K.tf.GPUOptions(
+                gpu_options=tf.compat.v1.GPUOptions(
                         per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) )
 
             with graph.as_default():
                 with session.as_default():
-                    import keras.backend as K
                     ret_model = self.build_model_aux()
                     ret_model.session = session
                     ret_model.graph = graph
                     return ret_model
         else:
-            K.set_session( K.tf.Session( config=K.tf.ConfigProto(
+            tf.compat.v1.Session( config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True, log_device_placement=False,
-                gpu_options=K.tf.GPUOptions(
-                    per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) ) )
+                gpu_options=tf.compat.v1.GPUOptions(
+                    per_process_gpu_memory_fraction=1./self.comm.Get_size()) ) )
             return self.build_model_aux()
 
     def get_backend_name(self):
@@ -497,7 +497,7 @@ class ModelPytorch(ModelBuilder):
         super(ModelPytorch,self).__init__(comm)
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__(source.replace('.py','').replace('/', '.'), fromlist=[None])
+                module = __import__('nnlo.'+source.replace('.py','').replace('/', '.'), fromlist=[None])
                 self.model = module.get_model()
                 self.filename = None
             else:
