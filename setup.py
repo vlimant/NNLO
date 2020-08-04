@@ -11,7 +11,7 @@ setup_args = dict(
     version='0.0.5',
     entry_points = {
         'console_scripts': ['TrainingDriver=nnlo.driver.TrainingDriver:main',
-            'GetData=nnlo.models.getdata:main',
+            'GetData=nnlo.data.getdata:main',
             'CountEpoch=nnlo.util.count_epoch:main',
         ],
     },

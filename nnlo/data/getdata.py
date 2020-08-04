@@ -8,10 +8,10 @@ def main():
     command = sys.argv[1]
     argv = sys.argv[2:]
     if command.lower() == 'mnist':
-        from nnlo.models.get_mnist import main
+        from nnlo.data.get_mnist import main
         main(argv)
     elif command.lower() == 'cifar10':
-        from nnlo.models.get_cifar10 import main
+        from nnlo.data.get_cifar10 import main
         main(argv)
     else:
         raise RuntimeError('Unknown command: {}'.format(command))

@@ -1,27 +1,26 @@
-### This script downloads the cifar10 dataset, unpacks it, splits it into four pieces, and saves 
+### This script downloads the MNIST dataset, unpacks it, splits it into four pieces, and saves 
 # each piece in a separate h5 file.
 
 from numpy import array_split
-from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.datasets import mnist
 from tensorflow.python.keras.utils import np_utils
 from tensorflow.python.keras import backend as K
 import h5py
-import sys
 import os
 
 def main(argv):
-    (X_train, Y_train), (X_test, Y_test) = cifar10.load_data()
+    (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
     
-    img_rows = 32
-    img_cols = 32
+    img_rows = 28
+    img_cols = 28
     if K.image_data_format() == 'channels_first':
-        X_train = X_train.reshape(X_train.shape[0], 3, img_rows, img_cols)
-        X_test = X_test.reshape(X_test.shape[0], 3, img_rows, img_cols)
-        input_shape = (3, img_rows, img_cols)
+        X_train = X_train.reshape(X_train.shape[0], 1, img_rows, img_cols)
+        X_test = X_test.reshape(X_test.shape[0], 1, img_rows, img_cols)
+        input_shape = (1, img_rows, img_cols)
     else:
-        X_train = X_train.reshape(X_train.shape[0], img_rows, img_cols, 3)
-        X_test = X_test.reshape(X_test.shape[0], img_rows, img_cols, 3)
-        input_shape = (img_rows, img_cols, 3)
+        X_train = X_train.reshape(X_train.shape[0], img_rows, img_cols, 1)
+        X_test = X_test.reshape(X_test.shape[0], img_rows, img_cols, 1)
+        input_shape = (img_rows, img_cols, 1)
     
     num_train_pieces = int(argv[1]) if len(argv)>1 else 24
     num_test_pieces = int(argv[2]) if len(argv)>1 else 4
@@ -32,25 +31,25 @@ def main(argv):
     
     train_list = []
     for i in range(num_train_pieces):
-        train_name = "cifar10_train_%d.h5" % i
+        train_name = f"{os.getcwd()}/mnist_train_%d.h5" % i
         train_list.append(train_name+"\n")
         train_outfile = h5py.File( train_name, 'w' )
         train_outfile.create_dataset( "features", data=split_X_train[i] )
         train_outfile.create_dataset( "labels", data=split_Y_train[i] )
         train_outfile.close()
-    with open(f'{os.getcwd()}/train_cifar10.list', 'w') as train_list_file:
+    with open('train_mnist.list', 'w') as train_list_file:
         for f in train_list:
             train_list_file.write(f)
     
     test_list = []
     for i in range(num_test_pieces):
-        test_name = "cifar10_test_%d.h5" % i
-        test_list.append(test_name+"\n")
+        test_name = f"{os.getcwd()}/mnist_test_%d.h5" % i
+        test_list.append(os.getcwd()+test_name+"\n")
         test_outfile = h5py.File( test_name, 'w' )
         test_outfile.create_dataset( "features", data=split_X_test[i] )
         test_outfile.create_dataset( "labels", data=split_Y_test[i] )
         test_outfile.close()
-    with open(f'{os.getcwd()}/test_cifar10.list', 'w') as test_list_file:
+    with open('test_mnist.list', 'w') as test_list_file:
         for f in test_list:
             test_list_file.write(f)
 

@@ -1,9 +1,5 @@
 from nnlo.models.model_cifar10_tf import make_cifar10_model
 
-get_model = make_cifar10_model
-#def get_name():
-#    return 'cifar10'
-
 def get_all():
     import socket,os,glob
     host = os.environ.get('HOST',os.environ.get('HOSTNAME',socket.gethostname()))
