@@ -12,7 +12,8 @@ setup_args = dict(
     entry_points = {
         'console_scripts': ['TrainingDriver=nnlo.driver.TrainingDriver:main',
             'GetData=nnlo.data.getdata:main',
-            'CountEpoch=nnlo.util.count_epoch:main',
+            'PrintTable=nnlo.util.print_table:main',
+            'PlotLoss=nnlo.util.plot_loss:main',
         ],
     },
     description='Distributed Machine Learning tool for High Performance Computing',

@@ -13,7 +13,7 @@ def main():
     try:
         filenames = sys.argv[1:]
     except:
-        logging.fatal('python count_epoch.py Usage [json file name]')
+        logging.fatal('Usage: python print_table.py [json file name]')
     
     for filename in filenames:
         with open(filename) as f:

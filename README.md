@@ -70,6 +70,14 @@ mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d
 
 See `TrainingDriver.py` for supported optional arguments.  Run the script via `mpirun` or `mpiexec`.  It automatically detects available NVIDIA GPUs and allocate them among the MPI worker processes.
 
+## Analyse scaling
+
+After running jobs with multiple GPUs, a number of `model_*_history.json` files are created
+```
+PrintTable model_*_history.json
+PlotLoss model_*_history.json
+```
+
 ## Customizing the training process
 
 The provided `TrainingDriver.py` script handles the case of a model that is specified in JSON format and training data that is stored in HDF5 files. However, the construction of the model and the loading of input data are easily customized.  
