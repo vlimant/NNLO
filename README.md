@@ -8,38 +8,45 @@ The original package was implemented by [Dustin Anderson](https://github.com/dua
 
 ## Examples
 
-Test with the MNIST dataset, with keras+tensorflow
+Install the package
 ```
-git clone https://github.com/vlimant/NNLO.git
+pip install nnlo
 cd NNLO
 ```
-Example with mnist provided in a python file
+Example with mnist using pre-defined model
 ```
-python3 models/get_mnist.py
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist_torch.py --loss categorical_crossentropy --epochs 3
+GetData mnist
+mpirun -np 3 TrainingDriver --model mnist --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
+jsrun -n 3 -g 1 TrainingDriver --model mnist --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
+```
+Example with mnist using user-defined model
+```
+export PYTHONPATH=/path/to/:$PYTHONPATH
+mpirun -np 3 TrainingDriver --model /path/to/mymodel.py --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
+jsrun -n 3 -g 1 TrainingDriver --model /path/to/mymodel.py --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_mnist.list --val_data /path/to/test_mnist.list
 ```
 
-Example with the cifar10 with model json
+Example with the cifar10 using pre-defined model
 ```
-python3 models/BuildModel.py cifar10
+GetData cifar10
 python3 models/get_cifar10.py
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model cifar10_arch.json --train train_cifar10.list  --val test_cifar10.list --loss categorical_crossentropy --epochs 5
+mpirun -np 3 TrainingDriver --model cifar10 --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_cifar10.list --val_data /path/to/test_cifar10.list
+jsrun -n 3 -g 1 TrainingDriver --model cifar10 --loss categorical_crossentropy --epochs 3 --trial-name n3g1epoch3 --train_data /path/to/train_cifar10.list --val_data /path/to/test_cifar10.list
 ```
 
 Example of training mnist with 2 workers, each with 2 process per Horovod ring
 ```
-mpirun -np 5 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --n-processes 2
+mpirun -np 5 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 3 --n-processes 2
 ```
 
 Example of training mnist with early stopping
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
+mpirun -np 3 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --early "val_loss,~<,4"
 ```
 
 Example of training with a fixed target
 ```
-mpirun -np 3 --tag-output python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
+mpirun -np 3 python3 TrainingDriver.py --model examples/example_mnist.py --loss categorical_crossentropy --epochs 10000 --target-metric "val_acc,>,0.97"
 ```
 
 ## GAN Examples (experimental)
@@ -63,6 +70,14 @@ mpirun -tag-output -n 3 python3 MPIGDriver.py dummy.json train_3d.list test_1_3d
 
 See `TrainingDriver.py` for supported optional arguments.  Run the script via `mpirun` or `mpiexec`.  It automatically detects available NVIDIA GPUs and allocate them among the MPI worker processes.
 
+## Analyse scaling
+
+After running jobs with multiple GPUs, a number of `model_*_history.json` files are created
+```
+PrintTable model_*_history.json
+PlotLoss model_*_history.json
+```
+
 ## Customizing the training process
 
 The provided `TrainingDriver.py` script handles the case of a model that is specified in JSON format and training data that is stored in HDF5 files. However, the construction of the model and the loading of input data are easily customized.  
@@ -70,7 +85,7 @@ The provided `TrainingDriver.py` script handles the case of a model that is spec
 #### Model
 
 Use the ModelBuilder class to specify how your model should be constructed:
-[mpi_learn/train/model.py](mpi_learn/train/model.py)
+[nnlo/train/model.py](nnlo/train/model.py)
 
 To specify your model, create a new class deriving from ModelBuilder and override the `build_model()` method.  This method should take no arguments and return the Keras model you wish to train.
 
@@ -81,7 +96,7 @@ The provided ModelFromJson class is a specialized ModelBuilder that constructs a
 #### Training/Testing data 
 
 Use the Data class to specify how batches of training data should be generated:
-[mpi_learn/train/data.py](mpi_learn/train/data.py)
+[nnlo/train/data.py](nnlo/train/data.py)
 
 To specify your training data, create a new class deriving from Data and override the `generate_data()` method.  The `generate_data` method should act as follows:
 - yield batches of training data in the form required for training with Keras, i.e. ( [x1, x2, ...], [y1, y2, ...] )
@@ -94,10 +109,10 @@ Note: `generate_data` should not continue to yield training batches forever; rat
 #### Optimization Procedure
 
 Use the Algo class to configure the details of the training algorithm:
-[mpi_learn/train/algo.py](mpi_learn/train/algo.py)
+[nnlo/train/algo.py](nnlo/train/algo.py)
 
 Provide an instance of the Algo class when you construct the MPIManager (see below).  The Algo constructor takes several arguments that specify aspects of the training process:
-- `optimizer`: supported arguments are `'sgd'`, `'adadelta'`, `'rmsprop'`, and `'adam'`.  For optimizers that have tunable parameters, please specify the values of those parameters as additional arguments (see [mpi_learn/train/optimizer.py](mpi_learn/train/optimizer.py) for details on the individual optimizers)
+- `optimizer`: supported arguments are `'sgd'`, `'adadelta'`, `'rmsprop'`, and `'adam'`.  For optimizers that have tunable parameters, please specify the values of those parameters as additional arguments (see [nnlo/train/optimizer.py](nnlo/train/optimizer.py) for details on the individual optimizers)
 - `loss`: loss function, specified as a string, e.g. 'categorical_crossentropy'
 - `validate_every`: number of gradient updates to process before performing validation.  Set to 0 to disable validation.
 - `sync_every`: number of batches for workers to process between gradient updates (default 1)
@@ -123,7 +138,7 @@ Training is initiated by an instance of the MPIManager class, which initializes 
 - `train_list`, `val_list`: lists of inputs files to use for training and validation.  Each MPI process should be able to access any/all of the input files; the MPIManager will split the input files among the available worker processes.
 - `callbacks`: list of `keras` callback objects, to be executed by the master process
 
-Other options are available as well: see [mpi_learn/mpi/manager.py](mpi_learn/mpi/manager.py)
+Other options are available as well: see [nnlo/mpi/manager.py](nnlo/mpi/manager.py)
 
 ### Training algorithm overview
 
