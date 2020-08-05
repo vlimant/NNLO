@@ -22,8 +22,6 @@ from nnlo.util.utils import import_keras
 from nnlo.util.timeline import Timeline
 from nnlo.util.logger import initialize_logger
 
-def make_Block_Parser():
-    pass
 def add_log_option(parser):
     # logging configuration
     parser.add_argument('--log-file', default=None, dest='log_file', help='log file to write, in additon to output stream')
@@ -151,7 +149,7 @@ def make_loader( args, features_name, labels_name, train_list):
     
     return data
 
-def make_model_weight(args, use_torch):
+def make_model_weight(args, backend):
     model_weights = None
     if args.restore:
         args.restore = re.sub(r'\.algo$', '', args.restore)
@@ -159,22 +157,26 @@ def make_model_weight(args, use_torch):
             with open(args.restore + '.latest', 'r') as latest:
                 args.restore = latest.read().splitlines()[-1]
         if any([os.path.isfile(ff) for ff in glob.glob('./*'+args.restore + '.model')]):
-            if use_torch:
+            if backend == 'torch':
                 args.model = args.restore + '.model'
                 model_weights = args.restore +'.model_w'
-            else:
+            elif backend == 'tf':
                 model_weights = args.restore + '.model'
+            else:
+                logging.error("%s backend not supported", backend)
                 
     return model_weights
                         
-def make_algo( args, use_tf, comm, validate_every ):
+def make_algo( args, backend, comm, validate_every ):
     args_opt = args.optimizer
-    if use_tf:
-        if not args_opt.endswith("tf"):
+    if backend == 'tf':
+        if not args_opt.endswith('tf'):
             args_opt = args_opt + 'tf'
-    else:
-        if not args_opt.endswith("torch"):
+    elif backend == 'torch':
+        if not args_opt.endswith('torch'):
             args_opt = args_opt + 'torch'
+    else:
+        logging.error("%s backend not supported", backend)
             
     if args.mode == 'easgd':
         algo = Algo(None, loss=args.loss, validate_every=validate_every,
@@ -217,10 +219,8 @@ def main():
     args = parser.parse_args()    
     initialize_logger(filename=args.log_file, file_level=args.log_level, stream_level=args.log_level)
 
-    a_backend = args.backend
-    if 'torch' in args.model:
-        a_backend = 'torch'
-        
+    backend = 'torch' if 'torch' in args.model else 'tf'
+
     model_source = None
     try:
         if args.model == 'mnist':
@@ -240,60 +240,30 @@ def main():
 
     if args.timeline: Timeline.enable()
 
-    use_tf = a_backend == 'keras'
-    use_torch = not use_tf
-
-    model_weights = make_model_weight(args, use_torch)
+    model_weights = make_model_weight(args, backend)
 
     device = get_device( comm, args.n_masters, gpu_limit=args.max_gpus,
                 gpu_for_master=args.master_gpu)
     os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
     logging.debug('set to device %s',os.environ['CUDA_VISIBLE_DEVICES'])
 
-    if use_torch:
+    if backend == 'torch':
         logging.debug("Using pytorch")
         model_builder = ModelPytorch(comm, source=model_source, weights=model_weights, gpus=1 if 'gpu' in device else 0)
-    else:
+    elif backend == 'tf':
         logging.debug("Using TensorFlow")
-        os.environ['KERAS_BACKEND'] = 'tensorflow'
-
         import tensorflow as tf
-        import_keras()
-        #tf.config.gpu.set_per_process_memory_fraction(0.1)
-        #gpu_options=K.tf.GPUOptions(
-        #    per_process_gpu_memory_fraction=0.1, #was 0.0
-        #    allow_growth = True,
-        #    visible_device_list = device[-1] if 'gpu' in device else '')
-        #gpu_options=K.tf.GPUOptions(
-        #    per_process_gpu_memory_fraction=0.0,
-        #    allow_growth = True,)     
         gpu_devices = tf.config.experimental.list_physical_devices('GPU')
         for device in gpu_devices:
             tf.config.experimental.set_memory_growth(device, True)
-
-        #NTHREADS=(2,1)
-        #NTHREADS=None
-        #if NTHREADS is None:
-        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-        #        allow_soft_placement=True, log_device_placement=False,
-        #        gpu_options=gpu_options
-        #    ) ) )
-        #else:
-        #    K.set_session( K.tf.Session( config=K.tf.ConfigProto(
-        #        allow_soft_placement=True, log_device_placement=False,
-        #        gpu_options=gpu_options,
-        #        intra_op_parallelism_threads=NTHREADS[0], 
-        #        inter_op_parallelism_threads=NTHREADS[1],
-        #    ) ) )
-        
-
         model_builder = ModelTensorFlow( comm, source=model_source, weights=model_weights)
-
+    else:
+        logging.error("%s backend not supported", backend)
 
     data = make_loader(args, features_name, labels_name, train_list)
 
     # Some input arguments may be ignored depending on chosen algorithm
-    algo = make_algo( args, use_tf, comm, validate_every=int(data.count_data()/args.batch ))
+    algo = make_algo( args, backend, comm, validate_every=int(data.count_data()/args.batch ))
     
     if args.restore:
         algo.load(args.restore)

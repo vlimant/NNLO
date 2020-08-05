@@ -13,9 +13,9 @@ from mpi4py import MPI
 from time import time,sleep
 
 from nnlo.mpi.manager import MPIManager, get_device
-from nnlo.train.algo import Algo
-from nnlo.train.data import H5Data
-from nnlo.train.model import ModelFromJson, ModelTensorFlow
+#from nnlo.train.algo import Algo
+#from nnlo.train.data import H5Data
+#from nnlo.train.model import ModelFromJson, ModelTensorFlow
 from nnlo.util.utils import import_keras
 from nnlo.util.logger import initialize_logger
 import socket
@@ -112,8 +112,8 @@ def main():
 
     logging.info(backend)
     if use_tf:
-        import_keras()
-        import keras.backend as K
+        #import_keras()
+        import tensorflow.keras.backend as K
         gpu_options=K.tf.GPUOptions(
             per_process_gpu_memory_fraction=0.0,
             allow_growth = True,)
