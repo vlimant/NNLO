@@ -4,9 +4,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-def get_name():
-    return 'mnist_torch'
-
 class MNistNet(nn.Module):
     def __init__(self, **args):
         super(MNistNet, self).__init__()

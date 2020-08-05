@@ -2,9 +2,6 @@
 # Rui Zhang 8.2020
 # rui.zhang@cern.ch
 
-def get_name():
-    return 'example'
-
 def get_model(**args):
     """Example model from keras documentation"""
     from tensorflow.keras.models import Sequential

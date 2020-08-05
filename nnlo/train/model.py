@@ -7,6 +7,7 @@ import copy
 import sys
 import six
 import logging
+import importlib
 
 def tell_gpu_memory(label):
     import gpustat
@@ -436,7 +437,7 @@ class ModelTensorFlow(ModelBuilder):
             custom_objects={}, weights=None):
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__('nnlo.'+source.replace('.py','').replace('/', '.'), fromlist=[None])
+                module = module = importlib.import_module(source.replace('.py','').replace('/', '.'))
                 self.model = module.get_model()
                 self.filename = None
             else:
@@ -497,7 +498,7 @@ class ModelPytorch(ModelBuilder):
         super(ModelPytorch,self).__init__(comm)
         if isinstance(source, six.string_types):
             if source.endswith('.py'):
-                module = __import__('nnlo.'+source.replace('.py','').replace('/', '.'), fromlist=[None])
+                module = module = importlib.import_module(source.replace('.py','').replace('/', '.'))
                 self.model = module.get_model()
                 self.filename = None
             else:

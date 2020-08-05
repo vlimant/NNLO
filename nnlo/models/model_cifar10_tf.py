@@ -2,9 +2,6 @@
 # Rui Zhang 8.2020
 # rui.zhang@cern.ch
 
-def get_name():
-    return 'cifar10'
-
 def get_model(**args):
     from tensorflow.keras.models import Sequential, Model
     from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten, Input, Permute

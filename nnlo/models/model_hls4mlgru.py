@@ -32,9 +32,6 @@ def get_model(**args):
     #              loss='categorical_crossentropy', metrics=['acc'])
     return model
 
-def get_name():
-    return 'hls4ml-gru'
-
 def get_all():
     import os,glob
 

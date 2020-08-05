@@ -158,9 +158,6 @@ def get_model(**args):
 
     return mymodel
 
-def get_name():
-    return 'hls4ml-jedi'
-
 def get_all():
     import os,glob
 

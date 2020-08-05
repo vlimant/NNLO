@@ -77,9 +77,6 @@ class CNN(nn.Module):
         return self.output(x)
             
 
-def get_name():
-    return 'topclass_torch'
-
 def get_model(**args):
     if args:logging.debug("receiving arguments {}".format(args))
     conv_layers=args.get('conv_layers',2)

@@ -91,7 +91,7 @@ def add_train_options(parser):
     parser.add_argument('--thread_validation', help='run a single process', action='store_true')
     
     # model arguments
-    parser.add_argument('--model', choices=['mnist', 'mnist_torch', 'cifar10', 'cifar10_torch'], help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
+    parser.add_argument('--model', required=True, help='File containing model architecture (serialized in JSON/pickle, or provided in a .py file')
     parser.add_argument('--trial-name', help='descriptive name for trial', 
             default='train', dest='trial_name')
 
@@ -198,7 +198,7 @@ def make_algo( args, use_tf, comm, validate_every ):
         logging.info("%s not supported mode", args.mode)
     return algo
 
-def make_train_val_lists(m_module, args):
+def make_train_val_lists(args):
     train_list = val_list = []
     with open(args.train_data) as train_list_file:
         train_list = [ s.strip() for s in train_list_file.readlines() ]
@@ -221,22 +221,21 @@ def main():
     if 'torch' in args.model:
         a_backend = 'torch'
         
-    m_module, model_source = None, None
+    model_source = None
     try:
         if args.model == 'mnist':
-            m_module = importlib.import_module(f'nnlo.models.model_mnist_tf')
-            model_source = 'models/model_mnist_tf.py'
+            model_source = 'nnlo/models/model_mnist_tf.py'
         elif args.model == 'mnist_torch':
-            m_module = importlib.import_module(f'nnlo.models.model_mnist_torch')
-            model_source = 'models/model_mnist_torch.py'
+            model_source = 'nnlo/models/model_mnist_torch.py'
         elif args.model == 'cifar10':
-            m_module = importlib.import_module(f'nnlo.models.model_cifar10_tf')
-            model_source = 'models/model_cifar10_tf.py'
+            model_source = 'nnlo/models/model_cifar10_tf.py'
+        elif args.model.endswith('py'):
+            model_source = args.model
     except Exception as e:
         logging.fatal(e)
 
     (features_name, labels_name) = args.features_name, args.labels_name
-    (train_list, val_list) = make_train_val_lists(m_module, args)
+    (train_list, val_list) = make_train_val_lists(args)
     comm = MPI.COMM_WORLD.Dup()
 
     if args.timeline: Timeline.enable()
@@ -246,8 +245,6 @@ def main():
 
     model_weights = make_model_weight(args, use_torch)
 
-    # Theano is the default backend; use tensorflow if --tf is specified.
-    # In the theano case it is necessary to specify the device before importing.
     device = get_device( comm, args.n_masters, gpu_limit=args.max_gpus,
                 gpu_for_master=args.master_gpu)
     os.environ['CUDA_VISIBLE_DEVICES'] = device[-1] if 'gpu' in device else ''
@@ -313,8 +310,8 @@ def main():
                           checkpoint=args.checkpoint, checkpoint_interval=args.checkpoint_interval)
 
 
-    if m_module:
-        model_name =m_module.get_name()
+    if model_source:
+        model_name = os.path.basename(model_source).replace('.py','')
     else:
         model_name = os.path.basename(args.model).replace('.json','')
 
