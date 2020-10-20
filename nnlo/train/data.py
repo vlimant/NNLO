@@ -1,6 +1,7 @@
 ### Data class and associated helper methods
 
 import numpy as np
+import pandas as pd
 import h5py
 import os
 import time
@@ -191,6 +192,75 @@ class Data(object):
             Not implemented in base class; derived classes should implement this function"""
         raise NotImplementedError
 
+        
+        
+class FrameData(Data):
+    """ Load pandas frame stored in hdf5 files """
+    def __init__(self, batch_size,
+                 feature_adaptor,
+                 cache=None,
+                 copy_command=None,
+                 preloading=0,
+                 frame_name='frame', 
+                 labels_name='label'):
+        """Initializes and stores names of feature and label datasets"""
+        super(FrameData, self).__init__(batch_size,cache,copy_command)
+        self.feature_adaptor = feature_adaptor
+        self.frame_name = frame_name
+        self.labels_name = labels_name
+        ## initialize the data-preloader
+        self.fpl = None   
+        
+    def load_data(self, in_file_name):
+        frame = pd.read_hdf(in_file_name, self.frame_name)
+        return frame        
+           
+    def count_data(self):
+        num_data = 0
+        for in_file_name in self.file_names:
+            frame = pd.read_hdf(in_file_name, self.frame_name)
+            num_data += len(frame)
+        return num_data        
+
+    def concat_data(self, data1, data2):
+        return pd.concat([data1, data2])
+
+    def generate_data(self):
+        """ 
+        Overwrite the the parent generate_data and adapt to pandas frames
+        """
+        leftovers = None
+        for cur_file_name in self.file_names:
+            cur_frame = self.load_data(cur_file_name)
+            # concatenate any leftover data from the previous file
+            if leftovers is not None:
+                cur_frame = self.concat_data( leftovers, cur_frame )
+                leftovers = None
+            num_in_file = len(cur_frame)
+            for cur_pos in range(0, num_in_file, self.batch_size):
+                next_pos = cur_pos + self.batch_size 
+                if next_pos <= num_in_file:
+                    yield ( self.get_batch( cur_frame, cur_pos, next_pos ), 
+                            cur_frame[self.labels_name].iloc[cur_pos : next_pos].values)
+                else:
+                    leftovers = cur_frame.iloc[cur_pos : num_in_file]   
+              
+    def get_batch(self, cur_frame, start_pos, end_pos ):
+        """ 
+        Convert the batch of the dataframe to a numpy array
+        with the provided function
+        """
+        #print( 'Gen batch' )
+        batch = cur_frame.iloc[start_pos : end_pos]
+        return self.feature_adaptor( batch )
+
+    def finalize(self):
+        if self.fpl:
+            self.fpl.stop()
+        Data.finalize(self)
+    
+        
+        
 class H5Data(Data):
     """Loads data stored in hdf5 files
         Attributes:
